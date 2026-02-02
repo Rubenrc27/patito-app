@@ -1,6 +1,7 @@
 import 'dart:convert'; // Para convertir el JSON a objetos
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http; // Nuestra librería de conexión
+import 'login_screen.dart'; // <--- 1. IMPORTA TU PANTALLA DE LOGIN
 
 // 1. EL PUNTO DE ENTRADA
 void main() {
@@ -10,16 +11,16 @@ void main() {
 // 2. CONFIGURACIÓN DE LA APP
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Rubber Duck Surveys',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.yellow, // Color temático Patito
         useMaterial3: true,
       ),
-      home: const SurveyListScreen(),
+      home: const LoginScreen(),
     );
   }
 }
