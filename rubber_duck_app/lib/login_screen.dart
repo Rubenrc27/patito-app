@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'main.dart';
+import 'package:rubber_duck_app/main_screen.dart';
 import 'register_screen.dart'; // <--- ASEGÚRATE DE QUE ESTE IMPORT ESTÉ AQUÍ
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -41,6 +42,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+
+        final prefs = await SharedPreferences.getInstance();
+        
+        // Guardamos el ID que nos devolvió Spring Boot
+        await prefs.setInt('userId', data['userId']); 
+        
+        // Guardamos el nombre para mostrarlo en el perfil
+        await prefs.setString('username', data['username']); 
+        
+        // Guardamos el rol (por si acaso quieres ocultar botones de admin)
+        await prefs.setString('role', data['role']); 
+        
+        print("✅ Login guardado: Usuario ID ${data['userId']}");
         if (!mounted) return;
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -53,7 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const SurveyListScreen()),
+          MaterialPageRoute(builder: (context) => const MainScreen()),
         );
         
       } else {
@@ -128,6 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 8),
                 Text(
                   'Identifícate para entrar al estanque',
+                  // ignore: deprecated_member_use
                   style: TextStyle(color: Colors.white.withOpacity(0.8)),
                 ),
                 const SizedBox(height: 50),
@@ -139,6 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(25),
                     boxShadow: [
+                      // ignore: deprecated_member_use
                       BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10))
                     ],
                   ),
