@@ -52,22 +52,7 @@ class _MainScreenState extends State<MainScreen> {
         ).children[_selectedIndex], // <--- TRUCO: Accedemos directamente para forzar rebuild
       ),
 
-      floatingActionButton: FloatingActionButton(
-        onPressed: () { 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Próximamente: Crear nueva encuesta 🦆"))
-          ); 
-        },
-        backgroundColor: duckYellow, 
-        elevation: 5, 
-        shape: const CircleBorder(), 
-        child: const Icon(Icons.add, size: 35, color: duckDark),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
       bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(), 
-        notchMargin: 8.0, 
         color: Colors.white, 
         elevation: 10,
         child: SizedBox(
@@ -77,7 +62,6 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               _buildBarItem(icon: Icons.home_rounded, label: "Inicio", index: 0),
               _buildBarItem(icon: Icons.check_circle_rounded, label: "Mis Encuestas", index: 1),
-              const SizedBox(width: 40),
               _buildBarItem(icon: Icons.person_rounded, label: "Perfil", index: 2),
               IconButton(
                 icon: const Icon(Icons.settings, color: Colors.grey), 
