@@ -29,25 +29,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  // --- FUNCIÓN: BORRAR HISTORIAL DE ENCUESTAS ---
-  Future<void> _resetSurveyHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('completed_surveys');
-    // Borramos también respuestas guardadas (limpieza genérica de claves que empiecen por survey_)
-    final keys = prefs.getKeys();
-    for (String key in keys) {
-      if (key.startsWith('survey_answers_')) {
-        await prefs.remove(key);
-      }
-    }
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("¡Historial borrado! Las encuestas volverán a aparecer."), backgroundColor: Colors.orange),
-      );
-    }
-  }
-
   // --- FUNCIÓN: BORRAR TODO (REINICIO DE FÁBRICA) ---
   Future<void> _factoryReset() async {
     final prefs = await SharedPreferences.getInstance();
@@ -106,32 +87,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const Divider(),
 
-          // SECCIÓN 2: DATOS Y ALMACENAMIENTO
-          const _SectionHeader(title: "Zona de Peligro"),
-          ListTile(
-            leading: const Icon(Icons.refresh, color: Colors.orange),
-            title: const Text("Reiniciar Encuestas"),
-            subtitle: const Text("Vuelve a hacer todas las encuestas"),
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text("¿Reiniciar historial?"),
-                  content: const Text("Las encuestas completadas volverán a aparecer en Inicio."),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        _resetSurveyHistory();
-                      }, 
-                      child: const Text("Reiniciar", style: TextStyle(color: Colors.orange))
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
           ListTile(
             leading: const Icon(Icons.delete_forever, color: Colors.red),
             title: const Text("Borrar cuenta y datos"),
