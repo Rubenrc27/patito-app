@@ -53,6 +53,12 @@ class _LoginScreenState extends State<LoginScreen> {
         
         // Guardamos el rol (por si acaso quieres ocultar botones de admin)
         await prefs.setString('role', data['role']); 
+
+        //datos personales de usuario
+        await prefs.setString('profile_name', data['fullName'] ?? ""); 
+        await prefs.setString('profile_age', data['age'] ?? ""); 
+        await prefs.setString('profile_bio', data['bio'] ?? ""); 
+        await prefs.setString('profile_avatar', data['avatar'] ?? "🦆");
         
         print("✅ Login guardado: Usuario ID ${data['userId']}");
         if (!mounted) return;

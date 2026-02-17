@@ -2,6 +2,8 @@ import 'dart:io'; // Para manejar archivos de la galería
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'colors.dart';
 import 'login_screen.dart';
 
@@ -60,6 +62,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     
     // Guardamos la cadena actual (sea emoji o ruta de archivo)
     await prefs.setString('profile_avatar', _currentAvatar);
+
+    // =============================================================================
+    final int userId = prefs.getInt('userId') ?? 0;
+    if (userId != 0) {
+      try {
+        final url = Uri.parse('http://127.0.0.1:8080/api/auth/profile/$userId');
+        await http.put(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'fullName': _nameController.text,
+            'age': _ageController.text,
+            'bio': _bioController.text,
+            'avatar': _currentAvatar,
+          }),
+        );
+      } catch (e) {
+        debugPrint("Error de sincronización con servidor: $e");
+      }
+    }
+    // ==============================================================================
 
     setState(() => _isEditing = false);
     if (mounted) {
