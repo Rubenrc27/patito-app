@@ -67,7 +67,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final int userId = prefs.getInt('userId') ?? 0;
     if (userId != 0) {
       try {
-        final url = Uri.parse('http://127.0.0.1:8080/api/auth/profile/$userId');
+final url = Uri.parse('https://careful-noninvidiously-nettie.ngrok-free.dev/api/auth/profile/$userId');
         await http.put(
           url,
           headers: {'Content-Type': 'application/json'},

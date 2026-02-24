@@ -30,8 +30,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    // Túnel ADB: adb reverse tcp:8080 tcp:8080
-    final url = Uri.parse('http://127.0.0.1:8080/api/auth/login');
+// Conexión pública a través de Ngrok
+final url = Uri.parse('https://careful-noninvidiously-nettie.ngrok-free.dev/api/auth/login');
 
     try {
       final response = await http.post(
