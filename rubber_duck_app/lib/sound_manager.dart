@@ -1,4 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SoundManager {
@@ -30,9 +31,9 @@ class SoundManager {
         // Solo ponemos la subcarpeta y el archivo.
         await _player.play(AssetSource('quack.mp3'));
         
-        print("🔊 Reproduciendo sonido... ");
+        debugPrint("🔊 Reproduciendo sonido... ");
       } catch (e) {
-        print("❌ Error de sonido: $e");
+        debugPrint("❌ Error de sonido: $e");
       }
     }
   }

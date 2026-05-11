@@ -4,12 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'colors.dart';
 import 'models.dart';
-
-// 🦆 URL CENTRALIZADA
-const String baseUrl = 'https://careful-noninvidiously-nettie.ngrok-free.dev';
+import 'api_config.dart';
 
 // =============================================================================
-// 🌊 PANTALLA 1: ESTANQUE
+// 🌊 PANTALLA 1: ESTANQUE (FEED)
 // =============================================================================
 class EstanqueScreen extends StatefulWidget {
   const EstanqueScreen({super.key});
@@ -31,29 +29,54 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
     final int userId = prefs.getInt('userId') ?? 0;
+    final String? token = prefs.getString('jwt_token');
 
     try {
-      final urlAll = Uri.parse('$baseUrl/api/surveys');
-      final urlMine = Uri.parse('$baseUrl/api/surveys/mis-encuestas?userId=$userId');
+      final urlAll = Uri.parse('${ApiConfig.baseUrl}/api/surveys');
+      final urlMine = Uri.parse('${ApiConfig.baseUrl}/api/surveys/mis-encuestas?userId=$userId');
 
-      final responses = await Future.wait([http.get(urlAll), http.get(urlMine)]);
+      final headers = {
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
+      debugPrint('Cargando encuestas para userId: $userId');
+      final responses = await Future.wait([
+        http.get(urlAll, headers: headers),
+        http.get(urlMine, headers: headers)
+      ]);
+
+      debugPrint('Status All: ${responses[0].statusCode}');
+      debugPrint('Status Mine: ${responses[1].statusCode}');
 
       if (responses[0].statusCode == 200 && responses[1].statusCode == 200) {
         final List<dynamic> allJson = json.decode(utf8.decode(responses[0].bodyBytes));
         final List<dynamic> mineJson = json.decode(utf8.decode(responses[1].bodyBytes));
+        
+        debugPrint('JSON All length: ${allJson.length}');
+        debugPrint('JSON Mine length: ${mineJson.length}');
+        
         final Set<int> myCompletedIds = mineJson.map((e) => e['id'] as int).toSet();
 
         if (mounted) {
           setState(() {
-            surveys = allJson
-                .map((e) => Survey.fromJson(e))
-                .where((s) => !myCompletedIds.contains(s.id))
-                .toList();
+            try {
+              surveys = allJson
+                  .map((e) => Survey.fromJson(e))
+                  .where((s) => !myCompletedIds.contains(s.id))
+                  .toList();
+              debugPrint('Encuestas finales en lista: ${surveys.length}');
+            } catch (e) {
+              debugPrint('Error parseando encuestas: $e');
+            }
             isLoading = false;
           });
         }
+      } else {
+        debugPrint('Error en la respuesta del servidor');
+        if (mounted) setState(() => isLoading = false);
       }
     } catch (e) {
+      debugPrint('Error en la conexión o proceso: $e');
       if (mounted) setState(() => isLoading = false);
     }
   }
@@ -61,29 +84,78 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: backgroundLight,
       appBar: AppBar(
-        title: const Text("Estanque de Encuestas"),
-        centerTitle: true,
+        title: const Text("Your Survey Feed"),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: () { setState(() => isLoading = true); _loadData(); })
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: () {
+              setState(() => isLoading = true);
+              _loadData();
+            },
+          )
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.white))
-          : surveys.isEmpty
-              ? _buildEmptyState("¡Estanque limpio!", Icons.done_all)
-              : ListView.builder(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: surveys.length,
-                  itemBuilder: (context, index) => _buildSurveyCard(context, surveys[index], isCompleted: false),
-                ),
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadData,
+              child: CustomScrollView(
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.all(24),
+                    sliver: SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Your Survey Feed",
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: primaryDeepNavy,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            "Complete your pending surveys to share your valuable feedback.",
+                            style: TextStyle(fontSize: 16, color: neutralGray),
+                          ),
+                          const SizedBox(height: 32),
+                        ],
+                      ),
+                    ),
+                  ),
+                  surveys.isEmpty
+                      ? SliverFillRemaining(
+                          child: _buildEmptyState("¡Estanque limpio!", Icons.done_all),
+                        )
+                      : SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          sliver: SliverGrid(
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: MediaQuery.of(context).size.width > 900 ? 3 : (MediaQuery.of(context).size.width > 600 ? 2 : 1),
+                              mainAxisSpacing: 24,
+                              crossAxisSpacing: 24,
+                              mainAxisExtent: 260,
+                            ),
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => _buildSurveyCard(context, surveys[index], isCompleted: false),
+                              childCount: surveys.length,
+                            ),
+                          ),
+                        ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                ],
+              ),
+            ),
     );
   }
 }
 
 // =============================================================================
-// ✅ PANTALLA 2: MIS ENCUESTAS
+// ✅ PANTALLA 2: MIS ENCUESTAS (COMPLETED)
 // =============================================================================
 class MisEncuestasScreen extends StatefulWidget {
   const MisEncuestasScreen({super.key});
@@ -105,11 +177,17 @@ class _MisEncuestasScreenState extends State<MisEncuestasScreen> {
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
     final int userId = prefs.getInt('userId') ?? 0;
+    final String? token = prefs.getString('jwt_token');
     
-    final url = Uri.parse('$baseUrl/api/surveys/mis-encuestas?userId=$userId');
+    final url = Uri.parse('${ApiConfig.baseUrl}/api/surveys/mis-encuestas?userId=$userId');
 
     try {
-      final response = await http.get(url);
+      final response = await http.get(
+        url,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
         if (mounted) {
@@ -127,19 +205,33 @@ class _MisEncuestasScreenState extends State<MisEncuestasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: backgroundLight,
       appBar: AppBar(
-        title: const Text("Mis Encuestas"),
-        centerTitle: true,
+        title: const Text("Completed Surveys"),
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.white))
+          ? const Center(child: CircularProgressIndicator())
           : surveys.isEmpty
               ? _buildEmptyState("Sin encuestas completadas.", Icons.assignment_late)
-              : ListView.builder(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: surveys.length,
-                  itemBuilder: (context, index) => _buildSurveyCard(context, surveys[index], isCompleted: true),
+              : CustomScrollView(
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.all(24),
+                      sliver: SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: MediaQuery.of(context).size.width > 900 ? 3 : (MediaQuery.of(context).size.width > 600 ? 2 : 1),
+                          mainAxisSpacing: 24,
+                          crossAxisSpacing: 24,
+                          mainAxisExtent: 260,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => _buildSurveyCard(context, surveys[index], isCompleted: true),
+                          childCount: surveys.length,
+                        ),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                  ],
                 ),
     );
   }
@@ -165,13 +257,12 @@ class _SurveyDetailScreenState extends State<SurveyDetailScreen> {
     
     final prefs = await SharedPreferences.getInstance();
     final int userId = prefs.getInt('userId') ?? 0;
+    final String? token = prefs.getString('jwt_token');
 
-    // 🦆 CONSTRUCCIÓN DEL PAYLOAD PARA SPRING BOOT
     List<Map<String, dynamic>> payload = [];
     
     _answers.forEach((questionId, value) {
       if (value is List) {
-        // SELECCIÓN MÚLTIPLE: Enviamos un objeto independiente por cada opción
         for (var optionId in value) {
           payload.add({
             "questionId": questionId, 
@@ -180,14 +271,12 @@ class _SurveyDetailScreenState extends State<SurveyDetailScreen> {
           });
         }
       } else if (value is int) {
-        // SELECCIÓN ÚNICA
         payload.add({
           "questionId": questionId, 
           "optionId": value,
           "surveyId": widget.survey.id
         });
       } else if (value is String && value.trim().isNotEmpty) {
-        // TEXTO LIBRE
         payload.add({
           "questionId": questionId, 
           "text": value,
@@ -196,33 +285,41 @@ class _SurveyDetailScreenState extends State<SurveyDetailScreen> {
       }
     });
 
-    final url = Uri.parse('$baseUrl/api/surveys/submit?userId=$userId');
+    final url = Uri.parse('${ApiConfig.baseUrl}/api/surveys/submit?userId=$userId');
 
     try {
       final response = await http.post(
         url, 
-        headers: {"Content-Type": "application/json"}, 
+        headers: {
+          "Content-Type": "application/json",
+          if (token != null) 'Authorization': 'Bearer $token',
+        }, 
         body: jsonEncode(payload)
       );
 
-      // Verificamos éxito (200 o 201)
       if ((response.statusCode == 200 || response.statusCode == 201) && mounted) {
         Map<String, dynamic> answersToSave = _answers.map((k, v) => MapEntry(k.toString(), v));
         await prefs.setString('survey_answers_${widget.survey.id}', jsonEncode(answersToSave));
         
+        if (!mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('¡Enviado con éxito! 🦆'), backgroundColor: Colors.green)
+          const SnackBar(content: Text('¡Enviado con éxito!'), backgroundColor: Colors.green)
         );
         Navigator.pop(context, true); 
       } else {
-        if(mounted) ScaffoldMessenger.of(context).showSnackBar(
+        if(mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error del servidor: ${response.statusCode}'))
         );
+        }
       }
     } catch (e) { 
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error de conexión 🔌'))
-      ); 
+      if(mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error de conexión'))
+      );
+      } 
     } finally {
       if (mounted) setState(() => isSubmitting = false);
     }
@@ -231,33 +328,25 @@ class _SurveyDetailScreenState extends State<SurveyDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundLight,
       appBar: AppBar(
-        title: Text(widget.survey.title), 
-        backgroundColor: duckYellow, 
-        foregroundColor: duckDark, 
-        elevation: 0
+        title: Text(widget.survey.title),
       ),
       body: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
         itemCount: widget.survey.questions.length + 1,
         itemBuilder: (context, index) {
           
           if (index == widget.survey.questions.length) {
             return Padding(
-              padding: const EdgeInsets.only(top: 20, bottom: 40), 
+              padding: const EdgeInsets.only(top: 24, bottom: 48), 
               child: SizedBox(
-                height: 50, 
+                height: 56, 
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: duckDark, 
-                    foregroundColor: Colors.white, 
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
-                  ), 
                   onPressed: (isSubmitting || _answers.isEmpty) ? null : submitAnswers, 
                   child: isSubmitting 
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("ENVIAR RESPUESTAS", style: TextStyle(fontWeight: FontWeight.bold))
+                    ? const CircularProgressIndicator(color: primaryDeepNavy)
+                    : const Text("SUBMIT RESPONSES")
                 )
               )
             );
@@ -265,25 +354,24 @@ class _SurveyDetailScreenState extends State<SurveyDetailScreen> {
 
           final question = widget.survey.questions[index];
           return Card(
-            color: Colors.white, 
-            elevation: 3, 
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), 
-            margin: const EdgeInsets.only(bottom: 20),
+            margin: const EdgeInsets.only(bottom: 24),
             child: Padding(
-              padding: const EdgeInsets.all(16), 
+              padding: const EdgeInsets.all(24), 
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start, 
                 children: [
                   Text("${index + 1}. ${question.text}", 
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: duckDark)),
-                  const SizedBox(height: 10),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryDeepNavy)),
+                  const SizedBox(height: 16),
                   
                   if (question.type == 'SINGLE') 
                     ...question.options.map((opt) => RadioListTile<int>(
                       title: Text(opt.text), 
                       value: opt.id, 
+                      // ignore: deprecated_member_use
                       groupValue: _answers[question.id], 
-                      activeColor: duckYellow, 
+                      activeColor: tertiaryBlue, 
+                      // ignore: deprecated_member_use
                       onChanged: (v) => setState(() => _answers[question.id] = v)
                     ))
                   
@@ -293,7 +381,7 @@ class _SurveyDetailScreenState extends State<SurveyDetailScreen> {
                       return CheckboxListTile(
                         title: Text(opt.text),
                         value: selectedList.contains(opt.id),
-                        activeColor: duckYellow,
+                        activeColor: tertiaryBlue,
                         onChanged: (bool? checked) {
                           setState(() {
                             if (checked == true) {
@@ -311,15 +399,15 @@ class _SurveyDetailScreenState extends State<SurveyDetailScreen> {
                     TextField(
                       onChanged: (v) {
                         setState(() {
-                          if (v.trim().isEmpty) _answers.remove(question.id);
-                          else _answers[question.id] = v;
+                          if (v.trim().isEmpty) {
+                            _answers.remove(question.id);
+                          } else {
+                            _answers[question.id] = v;
+                          }
                         });
                       },
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         hintText: "Escribe tu respuesta aquí...", 
-                        filled: true, 
-                        fillColor: Colors.grey.shade50, 
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))
                       )
                     )
                 ]
@@ -370,16 +458,14 @@ class _SurveyResultScreenState extends State<SurveyResultScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundLight,
       appBar: AppBar(
-        title: const Text("Tus Respuestas"), 
-        backgroundColor: Colors.green, 
-        foregroundColor: Colors.white
+        title: const Text("Your Responses"), 
       ),
       body: isLoading 
         ? const Center(child: CircularProgressIndicator()) 
         : ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
             itemCount: widget.survey.questions.length,
             itemBuilder: (context, index) {
               final question = widget.survey.questions[index];
@@ -395,7 +481,6 @@ class _SurveyResultScreenState extends State<SurveyResultScreen> {
                   );
                   displayText = selectedOption.text;
                 } else if (question.type == 'MULTIPLE' && userAnswer is List) {
-                  // Mapear IDs a textos de las opciones
                   displayText = question.options
                       .where((opt) => userAnswer.contains(opt.id))
                       .map((opt) => "• ${opt.text}")
@@ -406,20 +491,17 @@ class _SurveyResultScreenState extends State<SurveyResultScreen> {
               }
 
               return Card(
-                color: Colors.green.shade50, 
                 margin: const EdgeInsets.only(bottom: 16), 
-                elevation: 2, 
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0), 
+                  padding: const EdgeInsets.all(24.0), 
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start, 
                     children: [
-                      Text("${index + 1}. ${question.text}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: duckDark)),
-                      const SizedBox(height: 8), 
-                      const Text("Tu respuesta:", style: TextStyle(fontSize: 12, color: Colors.grey)), 
+                      Text("${index + 1}. ${question.text}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: primaryDeepNavy)),
+                      const SizedBox(height: 12), 
+                      const Text("Your response:", style: TextStyle(fontSize: 12, color: neutralGray)), 
                       const SizedBox(height: 4),
-                      Text(displayText, style: const TextStyle(fontSize: 16, color: Colors.green, fontWeight: FontWeight.bold)),
+                      Text(displayText, style: const TextStyle(fontSize: 16, color: tertiaryBlue, fontWeight: FontWeight.bold)),
                     ]
                   )
                 ),
@@ -435,40 +517,147 @@ class _SurveyResultScreenState extends State<SurveyResultScreen> {
 // =============================================================================
 Widget _buildEmptyState(String msg, IconData icon) {
   return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-    Icon(icon, size: 60, color: Colors.white70),
-    const SizedBox(height: 10),
-    Text(msg, style: const TextStyle(color: Colors.white, fontSize: 16))
+    Icon(icon, size: 64, color: borderGray),
+    const SizedBox(height: 16),
+    Text(msg, style: const TextStyle(color: neutralGray, fontSize: 18))
   ]));
 }
 
 Widget _buildSurveyCard(BuildContext context, Survey survey, {required bool isCompleted}) {
-  return Container(
-    margin: const EdgeInsets.only(bottom: 20),
-    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 15, offset: const Offset(0, 8))]),
-    child: Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () {
-          if (isCompleted) {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => SurveyResultScreen(survey: survey)));
-          } else {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => SurveyDetailScreen(survey: survey))).then((val) {
-              if (val == true) {
-                // Se podría recargar el estado aquí si fuera necesario
-              }
-            });
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Row(children: [
-            Container(width: 60, height: 60, decoration: BoxDecoration(color: isCompleted ? Colors.green.withOpacity(0.2) : const Color(0xFFFFD54F).withOpacity(0.2), shape: BoxShape.circle, border: Border.all(color: isCompleted ? Colors.green : const Color(0xFFFFD54F), width: 2)), child: Center(child: isCompleted ? const Icon(Icons.check, color: Colors.green, size: 30) : Text(survey.duckAvatar.isNotEmpty ? survey.duckAvatar[0] : "🦆", style: const TextStyle(fontSize: 28)))),
-            const SizedBox(width: 15),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(survey.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF3E2723))), const SizedBox(height: 5), Text(survey.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey[600], fontSize: 14))])),
-            const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFFFD54F)),
-          ]),
-        ),
+  final isMandatory = survey.title.toLowerCase().contains("mandatory") || survey.id % 3 == 0;
+  
+  return Card(
+    margin: EdgeInsets.zero,
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: () {
+        if (isCompleted) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => SurveyResultScreen(survey: survey)));
+        } else {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => SurveyDetailScreen(survey: survey))).then((val) {
+            if (val == true) {
+              // Refresh logic could be here
+            }
+          });
+        }
+      },
+      child: Stack(
+        children: [
+          if (!isCompleted && isMandatory)
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 4,
+              child: Container(color: errorRed),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (isCompleted)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: borderGray,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.check_circle, size: 14, color: neutralGray),
+                            SizedBox(width: 4),
+                            Text("Completed", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: neutralGray)),
+                          ],
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isMandatory ? errorRed.withValues(alpha: 0.1) : tertiaryBlue.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(isMandatory ? Icons.priority_high : Icons.info_outline, size: 14, color: isMandatory ? errorRed : tertiaryBlue),
+                            const SizedBox(width: 4),
+                            Text(
+                              isMandatory ? "Mandatory" : "Optional",
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isMandatory ? errorRed : tertiaryBlue),
+                            ),
+                          ],
+                        ),
+                      ),
+                    Row(
+                      children: [
+                        const Icon(Icons.schedule, size: 14, color: neutralGray),
+                        const SizedBox(width: 4),
+                        Text(isCompleted ? "Oct 1" : "15 mins", style: const TextStyle(fontSize: 10, color: neutralGray)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  survey.title,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isCompleted ? neutralGray : primaryDeepNavy,
+                    decoration: isCompleted ? TextDecoration.lineThrough : null,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  survey.description,
+                  style: const TextStyle(fontSize: 14, color: neutralGray),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const Spacer(),
+                const Divider(color: borderGray),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Due: Oct 15", style: TextStyle(fontSize: 12, color: neutralGray)),
+                    if (!isCompleted)
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => SurveyDetailScreen(survey: survey)));
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          backgroundColor: isMandatory ? secondaryYellow : Colors.white,
+                          foregroundColor: primaryDeepNavy,
+                          side: isMandatory ? null : const BorderSide(color: borderGray),
+                        ),
+                        child: const Row(
+                          children: [
+                            Text("Start Survey", style: TextStyle(fontSize: 12)),
+                            SizedBox(width: 4),
+                            Icon(Icons.arrow_forward, size: 14),
+                          ],
+                        ),
+                      )
+                    else
+                      const Text("Points: 50", style: TextStyle(fontSize: 12, color: neutralGray)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (isCompleted)
+            Container(
+              color: Colors.white.withValues(alpha: 0.4),
+            ),
+        ],
       ),
     ),
   );

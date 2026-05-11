@@ -1,4 +1,4 @@
-import 'dart:io'; // Para manejar archivos de la galería
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'colors.dart';
 import 'login_screen.dart';
+import 'api_config.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,20 +16,15 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Controladores de texto
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
 
   bool _isEditing = false;
   int _completedCount = 0;
-
-  // Esta variable guardará O BIEN un emoji ("🦆") O BIEN una ruta de archivo ("/data/.../image.jpg")
   String _currentAvatar = "🦆"; 
 
-  // Lista de avatares predefinidos (Emojis de animales)
   final List<String> _emojiAvatars = ["🦆", "🦅", "🦉", "🦩", "🐧", "🐤", "🐼", "🦊", "🦁", "🐸", "🐙", "🦄"];
-
   final ImagePicker _picker = ImagePicker();
 
   @override
@@ -37,40 +33,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfileData();
   }
 
-  // --- 1. CARGAR DATOS ---
   Future<void> _loadProfileData() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _nameController.text = prefs.getString('profile_name') ?? "Usuario Pato";
+      _nameController.text = prefs.getString('profile_name') ?? "Consultant Name";
       _ageController.text = prefs.getString('profile_age') ?? "";
-      _bioController.text = prefs.getString('profile_bio') ?? "¡Hola! Me encantan las encuestas.";
-      
-      // Cargamos el avatar. Si no existe, ponemos el pato por defecto.
+      _bioController.text = prefs.getString('profile_bio') ?? "Professional Consultant specializing in data-driven insights.";
       _currentAvatar = prefs.getString('profile_avatar') ?? "🦆";
-
       List<String> completed = prefs.getStringList('completed_surveys') ?? [];
       _completedCount = completed.length;
     });
   }
 
-  // --- 2. GUARDAR DATOS ---
   Future<void> _saveProfileData() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('profile_name', _nameController.text);
     await prefs.setString('profile_age', _ageController.text);
     await prefs.setString('profile_bio', _bioController.text);
-    
-    // Guardamos la cadena actual (sea emoji o ruta de archivo)
     await prefs.setString('profile_avatar', _currentAvatar);
 
-    // =============================================================================
     final int userId = prefs.getInt('userId') ?? 0;
+    final String? token = prefs.getString('jwt_token');
+
     if (userId != 0) {
       try {
-final url = Uri.parse('https://careful-noninvidiously-nettie.ngrok-free.dev/api/auth/profile/$userId');
+        final url = Uri.parse(ApiConfig.profileUrl(userId));
         await http.put(
           url,
-          headers: {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
           body: jsonEncode({
             'fullName': _nameController.text,
             'age': _ageController.text,
@@ -79,66 +72,59 @@ final url = Uri.parse('https://careful-noninvidiously-nettie.ngrok-free.dev/api/
           }),
         );
       } catch (e) {
-        debugPrint("Error de sincronización con servidor: $e");
+        debugPrint("Error syncing profile: $e");
       }
     }
-    // ==============================================================================
 
     setState(() => _isEditing = false);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("¡Perfil guardado! 💾"), backgroundColor: Colors.green));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Profile updated successfully."), backgroundColor: Colors.green));
     }
   }
 
-  // --- 3. ELEGIR FOTO DE GALERÍA ---
   Future<void> _pickImageFromGallery() async {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
+        if (!mounted) return;
         setState(() {
-          _currentAvatar = image.path; // Guardamos la RUTA del archivo
+          _currentAvatar = image.path;
         });
-        // ignore: use_build_context_synchronously
-        Navigator.pop(context); // Cerramos el menú
+        Navigator.pop(context);
       }
     } catch (e) {
-      debugPrint("Error galería: $e");
+      debugPrint("Gallery error: $e");
     }
   }
 
-  // --- 4. FUNCIÓN INTELIGENTE PARA MOSTRAR EL AVATAR ---
-  // Esta función decide si pintar un Texto (Emoji) o una Imagen (Foto)
   Widget _buildAvatarWidget() {
-    // Verificamos si _currentAvatar parece una ruta de archivo y si el archivo existe
     bool isFile = _currentAvatar.length > 5 && File(_currentAvatar).existsSync();
 
     if (isFile) {
-      // SI ES FOTO DE GALERÍA:
       return Container(
         width: 120, height: 120,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: duckYellow, width: 4),
+          border: Border.all(color: borderGray, width: 4),
           image: DecorationImage(
             image: FileImage(File(_currentAvatar)),
             fit: BoxFit.cover,
           ),
-          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)]
+          boxShadow: [BoxShadow(color: primaryDeepNavy.withValues(alpha: 0.1), blurRadius: 20)]
         ),
       );
     } else {
-      // SI ES UN EMOJI DE ANIMAL:
       return Container(
         width: 120, height: 120,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: duckYellow.withOpacity(0.3), // ignore: deprecated_member_use
-          border: Border.all(color: duckYellow, width: 4),
-          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)]
+          color: secondaryYellow.withValues(alpha: 0.2),
+          border: Border.all(color: secondaryYellow, width: 4),
+          boxShadow: [BoxShadow(color: primaryDeepNavy.withValues(alpha: 0.1), blurRadius: 20)]
         ),
         child: Center(
           child: Text(
-            _currentAvatar, // Pintamos el emoji
+            _currentAvatar,
             style: const TextStyle(fontSize: 60),
           ),
         ),
@@ -147,28 +133,30 @@ final url = Uri.parse('https://careful-noninvidiously-nettie.ngrok-free.dev/api/
   }
 
   String _getRank() {
-    if (_completedCount >= 10) return "Pato Legendario 👑";
-    if (_completedCount >= 5) return "Pato Experto 🎓";
-    return "Pato Novato 🐣";
+    if (_completedCount >= 10) return "Expert Advisor";
+    if (_completedCount >= 5) return "Senior Consultant";
+    return "Associate Consultant";
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: backgroundLight,
       appBar: AppBar(
-        title: const Text("Mi Perfil"),
+        title: const Text("User Profile"),
         actions: [
           IconButton(
-            icon: Icon(_isEditing ? Icons.save : Icons.edit, size: 28),
-            color: _isEditing ? duckYellow : Colors.white,
+            icon: Icon(_isEditing ? Icons.check : Icons.edit),
             onPressed: () {
-              if (_isEditing) _saveProfileData();
-              else setState(() => _isEditing = true);
+              if (_isEditing) {
+                _saveProfileData();
+              } else {
+                setState(() => _isEditing = true);
+              }
             },
           ),
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.redAccent),
+            icon: const Icon(Icons.logout, color: errorRed),
             onPressed: () {
               Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), (route) => false);
             },
@@ -176,55 +164,75 @@ final url = Uri.parse('https://careful-noninvidiously-nettie.ngrok-free.dev/api/
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            // --- TARJETA DE USUARIO ---
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))]), // ignore: deprecated_member_use
-              child: Column(
-                children: [
-                  GestureDetector(
-                    onTap: _isEditing ? _showAvatarOptions : null, // Solo abre menú si estamos editando
-                    child: Stack(
-                      alignment: Alignment.bottomRight,
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: _isEditing ? _showAvatarOptions : null,
+                      child: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          _buildAvatarWidget(),
+                          if (_isEditing)
+                            CircleAvatar(
+                              radius: 18,
+                              backgroundColor: primaryDeepNavy,
+                              child: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
+                            )
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      _nameController.text,
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryDeepNavy),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: tertiaryBlue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _getRank(),
+                        style: const TextStyle(fontSize: 12, color: tertiaryBlue, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        // AQUÍ LLAMAMOS A LA FUNCIÓN QUE PINTA EL AVATAR
-                        _buildAvatarWidget(),
-                        
-                        // Icono de camarita si estamos editando
-                        if (_isEditing)
-                          const CircleAvatar(
-                            radius: 18,
-                            backgroundColor: duckDark,
-                            child: Icon(Icons.camera_alt, size: 20, color: Colors.white),
-                          )
+                        _buildStat("Surveys", _completedCount.toString()),
+                        _buildStat("Points", "${_completedCount * 10}"),
+                        _buildStat("Age", _ageController.text.isEmpty ? "-" : _ageController.text),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 15),
-                  Text(_nameController.text, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: duckDark)),
-                  Text(_getRank(), style: TextStyle(fontSize: 14, color: Colors.orange[800], fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 20),
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [_buildStat("Encuestas", _completedCount.toString()), _buildStat("Puntos", "${_completedCount * 10}"), _buildStat("Edad", _ageController.text.isEmpty ? "-" : _ageController.text)]),
-                ],
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 20),
-            
-            // --- FORMULARIO ---
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-              child: Column(
-                children: [
-                  _buildTextField("Nombre", _nameController, Icons.person),
-                  const SizedBox(height: 15),
-                  _buildTextField("Edad", _ageController, Icons.cake, isNumber: true),
-                  const SizedBox(height: 15),
-                  _buildTextField("Bio", _bioController, Icons.description, maxLines: 3),
-                ],
+            const SizedBox(height: 24),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Professional Details", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryDeepNavy)),
+                    const SizedBox(height: 24),
+                    _buildTextField("Full Name", _nameController, Icons.person_outline),
+                    const SizedBox(height: 16),
+                    _buildTextField("Age", _ageController, Icons.cake_outlined, isNumber: true),
+                    const SizedBox(height: 16),
+                    _buildTextField("Biography", _bioController, Icons.description_outlined, maxLines: 3),
+                  ],
+                ),
               ),
             ),
           ],
@@ -233,57 +241,72 @@ final url = Uri.parse('https://careful-noninvidiously-nettie.ngrok-free.dev/api/
     );
   }
 
-  Widget _buildStat(String label, String value) => Column(children: [Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: duckDark)), Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey))]);
+  Widget _buildStat(String label, String value) => Column(
+    children: [
+      Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryDeepNavy)),
+      Text(label, style: const TextStyle(fontSize: 12, color: neutralGray)),
+    ],
+  );
 
   Widget _buildTextField(String label, TextEditingController controller, IconData icon, {bool isNumber = false, int maxLines = 1}) {
-    return TextField(
-      controller: controller, enabled: _isEditing, keyboardType: isNumber ? TextInputType.number : TextInputType.text, maxLines: maxLines,
-      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: _isEditing ? Colors.white : Colors.grey.shade100),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: primaryDeepNavy)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          enabled: _isEditing,
+          keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+          maxLines: maxLines,
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon),
+            filled: true,
+            fillColor: _isEditing ? surfaceWhite : backgroundLight,
+          ),
+        ),
+      ],
     );
   }
 
-  // --- MENÚ DESPLEGABLE INFERIOR ---
   void _showAvatarOptions() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
         return Container(
-          padding: const EdgeInsets.all(20),
-          height: 350, // Altura del menú
+          padding: const EdgeInsets.all(32),
+          height: 400,
           child: Column(
             children: [
-              const Text("Cambiar Avatar", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: duckDark)),
-              const SizedBox(height: 20),
-              
-              // OPCIÓN A: GALERÍA
+              const Text("Change Profile Identity", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryDeepNavy)),
+              const SizedBox(height: 24),
               ListTile(
-                leading: const CircleAvatar(backgroundColor: duckDark, child: Icon(Icons.photo_library, color: Colors.white)),
-                title: const Text("Subir foto de mi galería"),
-                subtitle: const Text("Usa una foto real tuya"),
+                leading: const CircleAvatar(backgroundColor: primaryDeepNavy, child: Icon(Icons.photo_library, color: Colors.white)),
+                title: const Text("Upload professional photo"),
+                subtitle: const Text("Select from your device gallery"),
                 onTap: _pickImageFromGallery,
               ),
-              
-              const Divider(height: 30),
-              
-              const Text("O elige un animal:", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 15),
-
-              // OPCIÓN B: GRID DE EMOJIS
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16.0),
+                child: Divider(color: borderGray),
+              ),
+              const Text("Select representative icon:", style: TextStyle(color: neutralGray, fontWeight: FontWeight.bold, fontSize: 12)),
+              const SizedBox(height: 16),
               Expanded(
                 child: GridView.builder(
                   itemCount: _emojiAvatars.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 5, crossAxisSpacing: 10, mainAxisSpacing: 10),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 6, crossAxisSpacing: 12, mainAxisSpacing: 12),
                   itemBuilder: (context, index) {
                     return GestureDetector(
                       onTap: () {
-                        setState(() => _currentAvatar = _emojiAvatars[index]); // Seleccionamos emoji
+                        setState(() => _currentAvatar = _emojiAvatars[index]);
                         Navigator.pop(ctx);
                       },
                       child: CircleAvatar(
-                        backgroundColor: Colors.grey.shade100,
-                        child: Text(_emojiAvatars[index], style: const TextStyle(fontSize: 30)),
+                        backgroundColor: backgroundLight,
+                        child: Text(_emojiAvatars[index], style: const TextStyle(fontSize: 24)),
                       ),
                     );
                   },

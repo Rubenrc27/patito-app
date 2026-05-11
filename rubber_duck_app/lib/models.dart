@@ -19,8 +19,8 @@ class Survey {
       // PROTECCIÓN 1: Si id es nulo, ponemos 0
       id: json['id'] ?? 0,
       
-      // PROTECCIÓN 2: Si title es nulo, ponemos texto por defecto
-      title: json['title'] ?? 'Sin título',
+      // PROTECCIÓN 2: El backend a veces envía 'description' pero no 'title'
+      title: json['title'] ?? json['description'] ?? 'Sin título',
       
       description: json['description'] ?? '',
       

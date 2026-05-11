@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'colors.dart';
 import 'login_screen.dart';
-import 'sound_manager.dart'; // <--- Importamos el gestor de sonido
+import 'sound_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -12,7 +12,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // Estado de los interruptores
   bool _notificationsEnabled = true;
   bool _duckSounds = false;
 
@@ -22,19 +21,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadSettings();
   }
 
-  // Cargar estado real del sonido desde el Manager
   void _loadSettings() {
     setState(() {
       _duckSounds = SoundManager.isEnabled;
     });
   }
 
-  // --- FUNCIÓN: BORRAR TODO (REINICIO DE FÁBRICA) ---
   Future<void> _factoryReset() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // ¡BORRA TODO!
-    
-    // Restablecemos el sonido a apagado en memoria local también
+    await prefs.clear(); 
     await SoundManager.setSound(false);
 
     if (mounted) {
@@ -49,93 +44,104 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundLight,
       appBar: AppBar(
-        title: const Text("Ajustes"),
-        backgroundColor: duckYellow,
-        foregroundColor: duckDark,
-        elevation: 0,
+        title: const Text("System Settings"),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
         children: [
-          // SECCIÓN 1: GENERAL
-          const _SectionHeader(title: "General"),
-          SwitchListTile(
-            activeColor: duckYellow,
-            title: const Text("Notificaciones Push"),
-            subtitle: const Text("Avísame cuando haya nuevas encuestas"),
-            value: _notificationsEnabled,
-            onChanged: (val) => setState(() => _notificationsEnabled = val),
-            secondary: const Icon(Icons.notifications_active, color: duckDark),
+          const _SectionHeader(title: "Application Preferences"),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  activeThumbColor: tertiaryBlue,
+                  title: const Text("Push Notifications"),
+                  subtitle: const Text("Receive alerts for new surveys and reports."),
+                  value: _notificationsEnabled,
+                  onChanged: (val) => setState(() => _notificationsEnabled = val),
+                  secondary: const Icon(Icons.notifications_active_outlined, color: primaryDeepNavy),
+                ),
+                const Divider(height: 1, indent: 70, color: borderGray),
+                SwitchListTile(
+                  activeThumbColor: tertiaryBlue,
+                  title: const Text("Audio Feedback"),
+                  subtitle: const Text("Enable subtle audio cues for interactions."),
+                  value: _duckSounds,
+                  onChanged: (val) {
+                    setState(() => _duckSounds = val);
+                    SoundManager.setSound(val);
+                    if (val) SoundManager.play();
+                  },
+                  secondary: const Icon(Icons.volume_up_outlined, color: primaryDeepNavy),
+                ),
+              ],
+            ),
           ),
           
-          // --- INTERRUPTOR DE SONIDO ---
-          SwitchListTile(
-            activeColor: duckYellow,
-            title: const Text("Sonidos de Pato 🦆"),
-            subtitle: const Text("Hacer 'Cuack' al pulsar botones"),
-            value: _duckSounds,
-            onChanged: (val) {
-              setState(() => _duckSounds = val);
-              SoundManager.setSound(val); // Guardamos la preferencia
-              if (val) SoundManager.play(); // Cuack de confirmación
-            },
-            secondary: const Icon(Icons.music_note, color: duckDark),
+          const SizedBox(height: 32),
+          const _SectionHeader(title: "Security & Data"),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.delete_forever_outlined, color: errorRed),
+              title: const Text("Factory Reset"),
+              subtitle: const Text("Delete all local data and profile settings."),
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text("Confirm Data Erasure"),
+                    content: const Text("This action will permanently remove all profile information and local cached data. This cannot be undone."),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _factoryReset();
+                        }, 
+                        child: const Text("ERASE ALL", style: TextStyle(color: errorRed, fontWeight: FontWeight.bold))
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
-          // -----------------------------
 
-          const Divider(),
-
-          ListTile(
-            leading: const Icon(Icons.delete_forever, color: Colors.red),
-            title: const Text("Borrar cuenta y datos"),
-            subtitle: const Text("Eliminar perfil y reiniciar app"),
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text("¿Estás seguro?"),
-                  content: const Text("Se borrará tu nombre, foto y todo el progreso. Es irreversible."),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        _factoryReset();
-                      }, 
-                      child: const Text("BORRAR TODO", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))
-                    ),
-                  ],
+          const SizedBox(height: 32),
+          const _SectionHeader(title: "Platform Information"),
+          Card(
+            child: Column(
+              children: [
+                const ListTile(
+                  leading: Icon(Icons.info_outline, color: neutralGray),
+                  title: Text("Version"),
+                  trailing: Text("1.2.0-PRO", style: TextStyle(color: neutralGray, fontWeight: FontWeight.bold)),
                 ),
-              );
-            },
-          ),
-
-          const Divider(),
-
-          // SECCIÓN 3: INFO
-          const _SectionHeader(title: "Información"),
-          ListTile(
-            leading: const Icon(Icons.info_outline, color: Colors.grey),
-            title: const Text("Versión de la App"),
-            trailing: const Text("1.0.0 (Beta)", style: TextStyle(color: Colors.grey)),
-          ),
-          ListTile(
-            leading: const Icon(Icons.description, color: Colors.grey),
-            title: const Text("Términos y Condiciones"),
-            onTap: () {
-              showAboutDialog(
-                context: context,
-                applicationName: "Rubber Duck Surveys",
-                applicationVersion: "1.0.0",
-                applicationIcon: const Text("🦆", style: TextStyle(fontSize: 40)),
-                children: [
-                  const Text("Esta aplicación es un proyecto de aprendizaje."),
-                  const Text("Desarrollada con Flutter y mucho café."),
-                ]
-              );
-            },
+                const Divider(height: 1, indent: 70, color: borderGray),
+                ListTile(
+                  leading: const Icon(Icons.description_outlined, color: neutralGray),
+                  title: const Text("Service Agreement"),
+                  onTap: () {
+                    showAboutDialog(
+                      context: context,
+                      applicationName: "RubberDuckSurveys",
+                      applicationVersion: "1.2.0-PRO",
+                      applicationIcon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: secondaryYellow, borderRadius: BorderRadius.circular(8)),
+                        child: const Icon(Icons.flutter_dash, color: primaryDeepNavy),
+                      ),
+                      children: [
+                        const Text("Enterprise-grade Feedback Intelligence Platform."),
+                        const Text("Designed for high-performance corporate environments."),
+                      ]
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -150,10 +156,10 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.only(left: 4, bottom: 12),
       child: Text(
         title.toUpperCase(),
-        style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12),
+        style: const TextStyle(color: neutralGray, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1),
       ),
     );
   }

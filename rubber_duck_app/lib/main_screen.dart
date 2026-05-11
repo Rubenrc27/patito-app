@@ -3,6 +3,7 @@ import 'colors.dart';
 import 'surveys_screens.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
+import 'extra_screens.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -14,12 +15,11 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  // Definimos las pantallas aquí.
-  // Al no usar PageView, cada vez que cambiemos de índice, se reconstruirá la pantalla elegida.
   final List<Widget> _pages = [
-    const EstanqueScreen(),      // Pantalla 0
-    const MisEncuestasScreen(),  // Pantalla 1
-    const ProfileScreen(),       // Pantalla 2
+    const EstanqueScreen(),
+    const CreateSurveyScreen(),
+    const AnalyticsScreen(),
+    const ProfileScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -30,64 +30,147 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isDesktop = size.width > 900;
+
     return Scaffold(
-      extendBody: true,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft, 
-            end: Alignment.bottomRight, 
-            colors: [duckYellow, duckDark], 
-            stops: [0.3, 0.9]
-          ),
-        ),
-        // 🦆 AQUÍ ESTÁ EL CAMBIO: Cargamos directamente la página (sin PageView)
-        // Esto fuerza a que se recargue ("init") cada vez que cambias de pestaña.
-        child: IndexedStack( // Usamos IndexedStack o directamente _pages[_selectedIndex]
-          index: _selectedIndex,
-          // NOTA: Si quieres que se recargue 100% EXTREMO usa: _pages[_selectedIndex]
-          // Si usas IndexedStack guarda estado. 
-          // Como tú quieres REFRESCAR, usaremos la opción directa:
-          children: _pages, 
-        ).children[_selectedIndex], // <--- TRUCO: Accedemos directamente para forzar rebuild
-      ),
-
-      bottomNavigationBar: BottomAppBar(
-        color: Colors.white, 
-        elevation: 10,
-        child: SizedBox(
-          height: 60, 
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround, 
-            children: [
-              _buildBarItem(icon: Icons.home_rounded, label: "Inicio", index: 0),
-              _buildBarItem(icon: Icons.check_circle_rounded, label: "Mis Encuestas", index: 1),
-              _buildBarItem(icon: Icons.person_rounded, label: "Perfil", index: 2),
-              IconButton(
-                icon: const Icon(Icons.settings, color: Colors.grey), 
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
-                },
+      backgroundColor: backgroundLight,
+      body: Row(
+        children: [
+          if (isDesktop)
+            Container(
+              width: 280,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(right: BorderSide(color: borderGray)),
               ),
-            ]
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: secondaryYellow,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.flutter_dash, color: primaryDeepNavy, size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'RubberDuckSurveys',
+                          style: TextStyle(
+                            color: primaryDeepNavy,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  _buildNavTile(Icons.ballot_outlined, "Feed", 0),
+                  _buildNavTile(Icons.add_circle_outline, "Create", 1),
+                  _buildNavTile(Icons.analytics_outlined, "Analytics", 2),
+                  _buildNavTile(Icons.person_outline, "Profile", 3),
+                  const Spacer(),
+                  _buildNavTile(Icons.settings_outlined, "Settings", -1, onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
+                  }),
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
+          Expanded(
+            child: _pages[_selectedIndex],
+          ),
+        ],
+      ),
+      bottomNavigationBar: isDesktop
+          ? null
+          : Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: primaryDeepNavy.withValues(alpha: 0.05),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildBottomNavItem(Icons.ballot, "Feed", 0),
+                      _buildBottomNavItem(Icons.add_circle, "Create", 1),
+                      _buildBottomNavItem(Icons.analytics, "Analytics", 2),
+                      _buildBottomNavItem(Icons.person, "Profile", 3),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildNavTile(IconData icon, String label, int index, {VoidCallback? onTap}) {
+    final isSelected = _selectedIndex == index;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: ListTile(
+        onTap: onTap ?? () => _onItemTapped(index),
+        leading: Icon(icon, color: isSelected ? tertiaryBlue : neutralGray),
+        title: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? primaryDeepNavy : neutralGray,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        selected: isSelected,
+        selectedTileColor: tertiaryBlue.withValues(alpha: 0.05),
       ),
     );
   }
 
-  Widget _buildBarItem({required IconData icon, required String label, required int index}) {
+  Widget _buildBottomNavItem(IconData icon, String label, int index, {VoidCallback? onTap}) {
     final isSelected = _selectedIndex == index;
-    return IconButton(
-      icon: Icon(icon, color: isSelected ? duckDark : Colors.grey.shade400, size: isSelected ? 30 : 26), 
-      onPressed: () => _onItemTapped(index), 
-      tooltip: label
+    return InkWell(
+      onTap: onTap ?? () => _onItemTapped(index),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected ? secondaryYellow : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: isSelected ? primaryDeepNavy : neutralGray,
+              size: 24,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              color: isSelected ? primaryDeepNavy : neutralGray,
+            ),
+          ),
+        ],
+      ),
     );
   }
-}
-
-// Extensión pequeña para acceder al children del IndexedStack de forma segura si usas el truco de arriba
-extension on IndexedStack {
-  // Simplemente para que compile el truco de arriba, aunque _pages[_selectedIndex] directo en el body es más limpio.
-  // Pero para tu caso, pon en el body simplemente: _pages[_selectedIndex]
 }
