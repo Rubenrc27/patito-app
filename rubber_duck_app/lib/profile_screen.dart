@@ -283,14 +283,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 8),
                 const Text('Inicia sesión para acceder a todas las funciones.', style: TextStyle(color: neutralGray, fontSize: 16)),
                 const SizedBox(height: 32),
-                const Text('Username', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const Text('Usuario', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _userController,
                   decoration: const InputDecoration(hintText: 'Tu usuario', prefixIcon: Icon(Icons.person_outline)),
                 ),
                 const SizedBox(height: 24),
-                const Text('Password', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const Text('Contraseña', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _passController,
@@ -357,9 +357,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   String _getRank() {
-    if (_completedCount >= 10) return "Expert Advisor";
-    if (_completedCount >= 5) return "Senior Consultant";
-    return "Associate Consultant";
+    if (_completedCount >= 10) return "Asesor Experto";
+    if (_completedCount >= 5) return "Consultor Senior";
+    return "Consultor Asociado";
   }
 
   Widget _buildStat(String label, String value) => Column(

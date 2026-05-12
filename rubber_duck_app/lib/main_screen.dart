@@ -16,6 +16,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   bool _isLoggedIn = false;
+  bool _isChecking = true;
 
   @override
   void initState() {
@@ -25,9 +26,14 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<void> _checkLoginStatus() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _isLoggedIn = prefs.getInt('userId') != null && prefs.getInt('userId') != 0;
-    });
+    final int userId = prefs.getInt('userId') ?? 0;
+    
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = userId != 0;
+        _isChecking = false;
+      });
+    }
   }
 
   void _onItemTapped(int index) {
@@ -44,6 +50,13 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isChecking) {
+      return const Scaffold(
+        backgroundColor: backgroundLight, 
+        body: Center(child: CircularProgressIndicator())
+      );
+    }
+
     final size = MediaQuery.of(context).size;
     final isDesktop = size.width > 900;
 
@@ -95,12 +108,12 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  _buildNavTile(Icons.ballot_outlined, "Feed", 0),
-                  _buildNavTile(Icons.add_circle_outline, "Create", 1),
-                  _buildNavTile(Icons.analytics_outlined, "Analytics", 2),
-                  _buildNavTile(Icons.person_outline, "Profile", 3),
+                  _buildNavTile(Icons.ballot_outlined, "Estanque", 0),
+                  _buildNavTile(Icons.add_circle_outline, "Crear", 1),
+                  _buildNavTile(Icons.analytics_outlined, "Análisis", 2),
+                  _buildNavTile(Icons.person_outline, "Perfil", 3),
                   const Spacer(),
-                  _buildNavTile(Icons.settings_outlined, "Settings", -1, onTap: () {
+                  _buildNavTile(Icons.settings_outlined, "Ajustes", -1, onTap: () {
                     Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
                   }),
                   const SizedBox(height: 32),

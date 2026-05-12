@@ -26,8 +26,10 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Rubber Duck Surveys',
       debugShowCheckedModeBanner: false,
+      color: primaryDeepNavy,
       theme: ThemeData(
         useMaterial3: true,
+        scaffoldBackgroundColor: backgroundLight,
         colorScheme: ColorScheme.fromSeed(
           seedColor: primaryDeepNavy,
           primary: primaryDeepNavy,
@@ -38,7 +40,6 @@ class MyApp extends StatelessWidget {
         textTheme: GoogleFonts.interTextTheme(
           Theme.of(context).textTheme,
         ),
-        scaffoldBackgroundColor: backgroundLight,
         appBarTheme: const AppBarTheme(
           backgroundColor: primaryDeepNavy,
           elevation: 0,
@@ -92,11 +93,14 @@ class MyApp extends StatelessWidget {
         ),
       ),
       builder: (context, child) {
-        return Listener(
-          onPointerDown: (_) {
-            SoundManager.play();
-          },
-          child: child!,
+        return Container(
+          color: primaryDeepNavy, // Escudo contra el flash blanco inicial
+          child: Listener(
+            onPointerDown: (_) {
+              SoundManager.play();
+            },
+            child: child!,
+          ),
         );
       },
       home: splashSeen ? const MainScreen() : const SplashScreen(),

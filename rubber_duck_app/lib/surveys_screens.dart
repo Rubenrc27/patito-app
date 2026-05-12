@@ -732,7 +732,7 @@ Widget _buildSurveyCard(BuildContext context, Survey survey, {required bool isCo
                       children: [
                         const Icon(Icons.schedule, size: 14, color: neutralGray),
                         const SizedBox(width: 4),
-                        Text(isCompleted ? "Oct 1" : "15 mins", style: const TextStyle(fontSize: 10, color: neutralGray)),
+                        Text(isCompleted ? "1 Oct" : "15 min", style: const TextStyle(fontSize: 10, color: neutralGray)),
                       ],
                     ),
                   ],
