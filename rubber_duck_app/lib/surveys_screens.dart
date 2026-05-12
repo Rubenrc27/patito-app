@@ -164,7 +164,15 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
                               mainAxisExtent: 260,
                             ),
                             delegate: SliverChildBuilderDelegate(
-                              (context, index) => _buildSurveyCard(context, surveys[index], isCompleted: false),
+                              (context, index) => _buildSurveyCard(
+                                context, 
+                                surveys[index], 
+                                isCompleted: false,
+                                onRefresh: () {
+                                  setState(() => isLoading = true);
+                                  _loadData();
+                                }
+                              ),
                               childCount: surveys.length,
                             ),
                           ),
@@ -265,7 +273,7 @@ class _MisEncuestasScreenState extends State<MisEncuestasScreen> {
                           mainAxisExtent: 260,
                         ),
                         delegate: SliverChildBuilderDelegate(
-                          (context, index) => _buildSurveyCard(context, surveys[index], isCompleted: true),
+                          (context, index) => _buildSurveyCard(context, surveys[index], isCompleted: true, onRefresh: _loadData),
                           childCount: surveys.length,
                         ),
                       ),
@@ -472,25 +480,38 @@ class SurveyResultScreen extends StatefulWidget {
 }
 
 class _SurveyResultScreenState extends State<SurveyResultScreen> {
-  Map<String, dynamic> _savedAnswers = {};
+  Map<String, dynamic>? _stats;
   bool isLoading = true;
 
   @override
   void initState() { 
     super.initState(); 
-    _loadUserAnswers(); 
+    _loadStats(); 
   }
 
-  Future<void> _loadUserAnswers() async {
+  Future<void> _loadStats() async {
     final prefs = await SharedPreferences.getInstance();
-    final String? jsonString = prefs.getString('survey_answers_${widget.survey.id}');
+    final String? token = prefs.getString('jwt_token');
     
-    if (jsonString != null && mounted) {
-      setState(() { 
-        _savedAnswers = jsonDecode(jsonString); 
-        isLoading = false; 
-      });
-    } else {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.surveysUrl}/${widget.survey.id}/stats'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          setState(() {
+            _stats = jsonDecode(utf8.decode(response.bodyBytes));
+            isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => isLoading = false);
+      }
+    } catch (e) {
       if (mounted) setState(() => isLoading = false);
     }
   }
@@ -500,54 +521,129 @@ class _SurveyResultScreenState extends State<SurveyResultScreen> {
     return Scaffold(
       backgroundColor: backgroundLight,
       appBar: AppBar(
-        title: const Text("Tus Respuestas"), 
+        title: const Text("Estadísticas de la Encuesta"), 
       ),
       body: isLoading 
         ? const Center(child: CircularProgressIndicator()) 
-        : ListView.builder(
-            padding: const EdgeInsets.all(24),
-            itemCount: widget.survey.questions.length,
-            itemBuilder: (context, index) {
-              final question = widget.survey.questions[index];
-              final dynamic userAnswer = _savedAnswers[question.id.toString()];
-              
-              String displayText = "Sin respuesta";
-              
-              if (userAnswer != null) {
-                if (question.type == 'SINGLE') {
-                  final selectedOption = question.options.firstWhere(
-                    (opt) => opt.id == userAnswer, 
-                    orElse: () => Option(id: -1, text: "Opción desconocida")
-                  );
-                  displayText = selectedOption.text;
-                } else if (question.type == 'MULTIPLE' && userAnswer is List) {
-                  displayText = question.options
-                      .where((opt) => userAnswer.contains(opt.id))
-                      .map((opt) => "• ${opt.text}")
-                      .join("\n");
-                } else { 
-                  displayText = userAnswer.toString(); 
-                }
-              }
+        : _stats == null 
+          ? _buildEmptyState("No hay datos disponibles", Icons.bar_chart)
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeaderCard(),
+                  const SizedBox(height: 32),
+                  const Text("Resultados por Pregunta", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryDeepNavy)),
+                  const SizedBox(height: 16),
+                  ...(_stats!['questions'] as List).map((q) => _buildQuestionStatCard(q)),
+                ],
+              ),
+            ),
+    );
+  }
 
-              return Card(
-                margin: const EdgeInsets.only(bottom: 16), 
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0), 
+  Widget _buildHeaderCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            const Icon(Icons.people_outline, size: 48, color: tertiaryBlue),
+            const SizedBox(height: 16),
+            Text(
+              "${_stats!['totalParticipants']}",
+              style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: primaryDeepNavy),
+            ),
+            const Text("Participantes totales", style: TextStyle(color: neutralGray)),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 8),
+            const Text(
+              "Estos datos son totalmente anónimos y muestran la tendencia global de las respuestas.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: neutralGray, fontStyle: FontStyle.italic),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuestionStatCard(Map<String, dynamic> q) {
+    List<dynamic>? options = q['options'];
+    int totalQ = 0;
+    if (options != null) {
+      for (var opt in options) {
+        totalQ += (opt['count'] as num).toInt();
+      }
+    } else {
+      totalQ = (q['totalAnswers'] as num).toInt();
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 24),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              q['text'],
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryDeepNavy),
+            ),
+            const SizedBox(height: 20),
+            if (options != null && totalQ > 0)
+              ...options.map((opt) {
+                double percent = totalQ > 0 ? (opt['count'] / totalQ) : 0.0;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start, 
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("${index + 1}. ${question.text}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: primaryDeepNavy)),
-                      const SizedBox(height: 12), 
-                      const Text("Tu respuesta:", style: TextStyle(fontSize: 12, color: neutralGray)), 
-                      const SizedBox(height: 4),
-                      Text(displayText, style: const TextStyle(fontSize: 16, color: tertiaryBlue, fontWeight: FontWeight.bold)),
-                    ]
-                  )
-                ),
-              );
-            },
-          ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(child: Text(opt['text'], style: const TextStyle(fontSize: 14))),
+                          Text("${(percent * 100).toStringAsFixed(1)}% (${opt['count']})", 
+                               style: const TextStyle(fontWeight: FontWeight.bold, color: tertiaryBlue)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Stack(
+                        children: [
+                          Container(
+                            height: 12,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: borderGray.withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          FractionallySizedBox(
+                            widthFactor: percent,
+                            child: Container(
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: tertiaryBlue,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              })
+            else if (q['type'] == 'OPEN')
+              Text("Se han recibido $totalQ respuestas de texto libre.", 
+                   style: const TextStyle(color: neutralGray, fontStyle: FontStyle.italic))
+            else
+              const Text("Sin respuestas aún", style: TextStyle(color: neutralGray)),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -563,8 +659,8 @@ Widget _buildEmptyState(String msg, IconData icon) {
   ]));
 }
 
-Widget _buildSurveyCard(BuildContext context, Survey survey, {required bool isCompleted}) {
-  final isMandatory = survey.title.toLowerCase().contains("mandatory") || survey.id % 3 == 0;
+Widget _buildSurveyCard(BuildContext context, Survey survey, {required bool isCompleted, VoidCallback? onRefresh}) {
+  final isMandatory = survey.title.toLowerCase().contains("obligatoria") || survey.id % 3 == 0;
   
   return Card(
     margin: EdgeInsets.zero,
@@ -575,8 +671,8 @@ Widget _buildSurveyCard(BuildContext context, Survey survey, {required bool isCo
           Navigator.push(context, MaterialPageRoute(builder: (_) => SurveyResultScreen(survey: survey)));
         } else {
           Navigator.push(context, MaterialPageRoute(builder: (_) => SurveyDetailScreen(survey: survey))).then((val) {
-            if (val == true) {
-              // Refresh logic could be here
+            if (val == true && onRefresh != null) {
+              onRefresh();
             }
           });
         }
