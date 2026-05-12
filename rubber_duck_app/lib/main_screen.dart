@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'colors.dart';
 import 'surveys_screens.dart';
 import 'profile_screen.dart';
@@ -14,13 +15,20 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  bool _isLoggedIn = false;
 
-  final List<Widget> _pages = [
-    const EstanqueScreen(),
-    const CreateSurveyScreen(),
-    const AnalyticsScreen(),
-    const ProfileScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _isLoggedIn = prefs.getInt('userId') != null && prefs.getInt('userId') != 0;
+    });
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -28,10 +36,25 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  void _navigateToProfile() {
+    setState(() {
+      _selectedIndex = 3;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final isDesktop = size.width > 900;
+
+    final List<Widget> pages = [
+      EstanqueScreen(isLoggedIn: _isLoggedIn, onGoToProfile: _navigateToProfile),
+      CreateSurveyScreen(isLoggedIn: _isLoggedIn, onGoToProfile: _navigateToProfile),
+      AnalyticsScreen(isLoggedIn: _isLoggedIn, onGoToProfile: _navigateToProfile),
+      ProfileScreen(onLoginSuccess: () {
+        _checkLoginStatus();
+      }),
+    ];
 
     return Scaffold(
       backgroundColor: backgroundLight,
@@ -85,7 +108,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ),
           Expanded(
-            child: _pages[_selectedIndex],
+            child: pages[_selectedIndex],
           ),
         ],
       ),

@@ -5,22 +5,31 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'colors.dart';
-import 'login_screen.dart';
 import 'api_config.dart';
+import 'register_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final VoidCallback onLoginSuccess;
+  const ProfileScreen({super.key, required this.onLoginSuccess});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  // Profile controllers
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
 
+  // Login controllers
+  final TextEditingController _userController = TextEditingController();
+  final TextEditingController _passController = TextEditingController();
+
+  bool _isLoggedIn = false;
+  bool _isLoading = false;
   bool _isEditing = false;
+  bool _obscurePassword = true;
   int _completedCount = 0;
   String _currentAvatar = "🦆"; 
 
@@ -30,7 +39,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _loadProfileData();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final int userId = prefs.getInt('userId') ?? 0;
+    if (userId != 0) {
+      setState(() => _isLoggedIn = true);
+      _loadProfileData();
+    } else {
+      setState(() => _isLoggedIn = false);
+    }
   }
 
   Future<void> _loadProfileData() async {
@@ -43,6 +63,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
       List<String> completed = prefs.getStringList('completed_surveys') ?? [];
       _completedCount = completed.length;
     });
+  }
+
+  Future<void> _login() async {
+    final username = _userController.text.trim();
+    final password = _passController.text.trim();
+
+    if (username.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, rellena usuario y contraseña')));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await http.post(
+        Uri.parse(ApiConfig.loginUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'username': username, 'password': password}),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final prefs = await SharedPreferences.getInstance();
+        
+        if (data['token'] != null) await prefs.setString('jwt_token', data['token']);
+        
+        final userId = data['userId'] ?? data['id'] ?? 0;
+        await prefs.setInt('userId', userId); 
+        await prefs.setString('username', data['username'] ?? "User"); 
+        
+        String role = data['role'] ?? "USER";
+        await prefs.setString('role', role.contains("ADMIN") ? "ADMIN" : "USER"); 
+
+        await prefs.setString('profile_name', data['fullName'] ?? ""); 
+        await prefs.setString('profile_age', data['age']?.toString() ?? ""); 
+        await prefs.setString('profile_bio', data['bio'] ?? ""); 
+        await prefs.setString('profile_avatar', data['avatar'] ?? "🦆");
+        
+        if (!mounted) return;
+        
+        widget.onLoginSuccess();
+        _checkLoginStatus();
+        
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('¡Bienvenido, ${data['username']}!'), backgroundColor: Colors.green));
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Usuario o contraseña incorrectos'), backgroundColor: errorRed));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error de conexión'), backgroundColor: Colors.orangeAccent));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('userId');
+    await prefs.remove('jwt_token');
+    await prefs.remove('username');
+    widget.onLoginSuccess(); // Notify main screen
+    _checkLoginStatus();
   }
 
   Future<void> _saveProfileData() async {
@@ -82,64 +165,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _pickImageFromGallery() async {
-    try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        if (!mounted) return;
-        setState(() {
-          _currentAvatar = image.path;
-        });
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      debugPrint("Gallery error: $e");
-    }
-  }
-
-  Widget _buildAvatarWidget() {
-    bool isFile = _currentAvatar.length > 5 && File(_currentAvatar).existsSync();
-
-    if (isFile) {
-      return Container(
-        width: 120, height: 120,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: borderGray, width: 4),
-          image: DecorationImage(
-            image: FileImage(File(_currentAvatar)),
-            fit: BoxFit.cover,
-          ),
-          boxShadow: [BoxShadow(color: primaryDeepNavy.withValues(alpha: 0.1), blurRadius: 20)]
-        ),
-      );
-    } else {
-      return Container(
-        width: 120, height: 120,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: secondaryYellow.withValues(alpha: 0.2),
-          border: Border.all(color: secondaryYellow, width: 4),
-          boxShadow: [BoxShadow(color: primaryDeepNavy.withValues(alpha: 0.1), blurRadius: 20)]
-        ),
-        child: Center(
-          child: Text(
-            _currentAvatar,
-            style: const TextStyle(fontSize: 60),
-          ),
-        ),
-      );
-    }
-  }
-
-  String _getRank() {
-    if (_completedCount >= 10) return "Expert Advisor";
-    if (_completedCount >= 5) return "Senior Consultant";
-    return "Associate Consultant";
-  }
-
   @override
   Widget build(BuildContext context) {
+    if (!_isLoggedIn) return _buildLoginView();
+
     return Scaffold(
       backgroundColor: backgroundLight,
       appBar: AppBar(
@@ -157,9 +186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.logout, color: errorRed),
-            onPressed: () {
-              Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), (route) => false);
-            },
+            onPressed: _logout,
           )
         ],
       ),
@@ -241,6 +268,100 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildLoginView() {
+    return Scaffold(
+      backgroundColor: backgroundLight,
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(32),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Identificación', style: TextStyle(color: primaryDeepNavy, fontSize: 32, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                const Text('Inicia sesión para acceder a todas las funciones.', style: TextStyle(color: neutralGray, fontSize: 16)),
+                const SizedBox(height: 32),
+                const Text('Username', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _userController,
+                  decoration: const InputDecoration(hintText: 'Tu usuario', prefixIcon: Icon(Icons.person_outline)),
+                ),
+                const SizedBox(height: 24),
+                const Text('Password', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _passController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    hintText: '••••••••',
+                    prefixIcon: const Icon(Icons.key_outlined),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _login,
+                    child: _isLoading
+                        ? const CircularProgressIndicator(strokeWidth: 2)
+                        : const Text('Entrar'),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Center(
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const RegisterScreen()));
+                    },
+                    child: const Text("¿No tienes cuenta? ¡Crea una aquí!", style: TextStyle(color: tertiaryBlue, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarWidget() {
+    bool isFile = _currentAvatar.length > 5 && File(_currentAvatar).existsSync();
+    if (isFile) {
+      return Container(
+        width: 120, height: 120,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: borderGray, width: 4),
+          image: DecorationImage(image: FileImage(File(_currentAvatar)), fit: BoxFit.cover),
+        ),
+      );
+    } else {
+      return Container(
+        width: 120, height: 120,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: secondaryYellow.withValues(alpha: 0.2),
+          border: Border.all(color: secondaryYellow, width: 4),
+        ),
+        child: Center(child: Text(_currentAvatar, style: const TextStyle(fontSize: 60))),
+      );
+    }
+  }
+
+  String _getRank() {
+    if (_completedCount >= 10) return "Expert Advisor";
+    if (_completedCount >= 5) return "Senior Consultant";
+    return "Associate Consultant";
+  }
+
   Widget _buildStat(String label, String value) => Column(
     children: [
       Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryDeepNavy)),
@@ -280,20 +401,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           height: 400,
           child: Column(
             children: [
-              const Text("Change Profile Identity", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryDeepNavy)),
+              const Text("Cambiar Avatar", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryDeepNavy)),
               const SizedBox(height: 24),
-              ListTile(
-                leading: const CircleAvatar(backgroundColor: primaryDeepNavy, child: Icon(Icons.photo_library, color: Colors.white)),
-                title: const Text("Upload professional photo"),
-                subtitle: const Text("Select from your device gallery"),
-                onTap: _pickImageFromGallery,
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16.0),
-                child: Divider(color: borderGray),
-              ),
-              const Text("Select representative icon:", style: TextStyle(color: neutralGray, fontWeight: FontWeight.bold, fontSize: 12)),
-              const SizedBox(height: 16),
               Expanded(
                 child: GridView.builder(
                   itemCount: _emojiAvatars.length,
@@ -304,10 +413,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         setState(() => _currentAvatar = _emojiAvatars[index]);
                         Navigator.pop(ctx);
                       },
-                      child: CircleAvatar(
-                        backgroundColor: backgroundLight,
-                        child: Text(_emojiAvatars[index], style: const TextStyle(fontSize: 24)),
-                      ),
+                      child: CircleAvatar(backgroundColor: backgroundLight, child: Text(_emojiAvatars[index], style: const TextStyle(fontSize: 24))),
                     );
                   },
                 ),

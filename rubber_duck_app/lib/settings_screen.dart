@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'colors.dart';
-import 'login_screen.dart';
+import 'splash_screen.dart';
 import 'sound_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -34,11 +34,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (mounted) {
       Navigator.pushAndRemoveUntil(
-        context, 
-        MaterialPageRoute(builder: (context) => const LoginScreen()), 
+        context,
+        MaterialPageRoute(builder: (context) => const SplashScreen()),
         (route) => false
       );
     }
+
   }
 
   @override

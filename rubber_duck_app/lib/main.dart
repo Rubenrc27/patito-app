@@ -2,24 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'colors.dart';
-import 'login_screen.dart';
+import 'splash_screen.dart';
 import 'main_screen.dart';
 import 'sound_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SoundManager.init();
-  
-  final prefs = await SharedPreferences.getInstance();
-  final bool isLoggedIn = prefs.getInt('userId') != null;
 
-  runApp(MyApp(isLoggedIn: isLoggedIn));
+  final prefs = await SharedPreferences.getInstance();
+  final bool splashSeen = prefs.getBool('splash_seen') ?? false;
+
+  runApp(MyApp(splashSeen: splashSeen));
 }
 
 class MyApp extends StatelessWidget {
-  final bool isLoggedIn;
-  
-  const MyApp({super.key, required this.isLoggedIn});
+  final bool splashSeen;
+
+  const MyApp({super.key, required this.splashSeen});
 
   @override
   Widget build(BuildContext context) {
@@ -99,7 +99,7 @@ class MyApp extends StatelessWidget {
           child: child!,
         );
       },
-      home: isLoggedIn ? const MainScreen() : const LoginScreen(),
+      home: splashSeen ? const MainScreen() : const SplashScreen(),
     );
   }
 }

@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'colors.dart';
+import 'shared_widgets.dart';
 
 class CreateSurveyScreen extends StatelessWidget {
-  const CreateSurveyScreen({super.key});
+  final bool isLoggedIn;
+  final VoidCallback onGoToProfile;
+  const CreateSurveyScreen({super.key, required this.isLoggedIn, required this.onGoToProfile});
 
   @override
   Widget build(BuildContext context) {
+    if (!isLoggedIn) return buildPlaceholder(context, "Crear Nueva Encuesta", onGoToProfile);
+
     return Scaffold(
       backgroundColor: backgroundLight,
       appBar: AppBar(title: const Text("Create New Survey")),
@@ -83,10 +88,14 @@ class CreateSurveyScreen extends StatelessWidget {
 }
 
 class AnalyticsScreen extends StatelessWidget {
-  const AnalyticsScreen({super.key});
+  final bool isLoggedIn;
+  final VoidCallback onGoToProfile;
+  const AnalyticsScreen({super.key, required this.isLoggedIn, required this.onGoToProfile});
 
   @override
   Widget build(BuildContext context) {
+    if (!isLoggedIn) return buildPlaceholder(context, "Análisis de Datos", onGoToProfile);
+
     return Scaffold(
       backgroundColor: backgroundLight,
       appBar: AppBar(title: const Text("Survey Analytics")),

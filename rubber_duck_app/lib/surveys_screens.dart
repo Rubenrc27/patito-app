@@ -5,12 +5,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'colors.dart';
 import 'models.dart';
 import 'api_config.dart';
+import 'shared_widgets.dart';
 
 // =============================================================================
 // 🌊 PANTALLA 1: ESTANQUE (FEED)
 // =============================================================================
 class EstanqueScreen extends StatefulWidget {
-  const EstanqueScreen({super.key});
+  final bool isLoggedIn;
+  final VoidCallback onGoToProfile;
+  const EstanqueScreen({super.key, required this.isLoggedIn, required this.onGoToProfile});
 
   @override
   State<EstanqueScreen> createState() => _EstanqueScreenState();
@@ -23,7 +26,20 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    if (widget.isLoggedIn) {
+      _loadData();
+    } else {
+      isLoading = false;
+    }
+  }
+
+  @override
+  void didUpdateWidget(EstanqueScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isLoggedIn && !oldWidget.isLoggedIn) {
+      setState(() => isLoading = true);
+      _loadData();
+    }
   }
 
   Future<void> _loadData() async {
@@ -32,48 +48,53 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
     final String? token = prefs.getString('jwt_token');
 
     try {
-      final urlAll = Uri.parse('${ApiConfig.baseUrl}/api/surveys');
-      final urlMine = Uri.parse('${ApiConfig.baseUrl}/api/surveys/mis-encuestas?userId=$userId');
+      final urlAll = Uri.parse(ApiConfig.surveysUrl);
+      final urlMine = Uri.parse('${ApiConfig.surveysUrl}/mis-encuestas?userId=$userId');
 
       final headers = {
         if (token != null) 'Authorization': 'Bearer $token',
       };
 
       debugPrint('Cargando encuestas para userId: $userId');
-      final responses = await Future.wait([
-        http.get(urlAll, headers: headers),
-        http.get(urlMine, headers: headers)
-      ]);
+      
+      // Cargamos por separado para que si falla una, la otra funcione
+      final responseAll = await http.get(urlAll, headers: headers);
+      debugPrint('Status All: ${responseAll.statusCode}');
 
-      debugPrint('Status All: ${responses[0].statusCode}');
-      debugPrint('Status Mine: ${responses[1].statusCode}');
+      List<dynamic> allJson = [];
+      if (responseAll.statusCode == 200) {
+        allJson = json.decode(utf8.decode(responseAll.bodyBytes));
+      }
 
-      if (responses[0].statusCode == 200 && responses[1].statusCode == 200) {
-        final List<dynamic> allJson = json.decode(utf8.decode(responses[0].bodyBytes));
-        final List<dynamic> mineJson = json.decode(utf8.decode(responses[1].bodyBytes));
-        
-        debugPrint('JSON All length: ${allJson.length}');
-        debugPrint('JSON Mine length: ${mineJson.length}');
-        
-        final Set<int> myCompletedIds = mineJson.map((e) => e['id'] as int).toSet();
-
-        if (mounted) {
-          setState(() {
-            try {
-              surveys = allJson
-                  .map((e) => Survey.fromJson(e))
-                  .where((s) => !myCompletedIds.contains(s.id))
-                  .toList();
-              debugPrint('Encuestas finales en lista: ${surveys.length}');
-            } catch (e) {
-              debugPrint('Error parseando encuestas: $e');
-            }
-            isLoading = false;
-          });
+      List<dynamic> mineJson = [];
+      try {
+        final responseMine = await http.get(urlMine, headers: headers);
+        debugPrint('Status Mine: ${responseMine.statusCode}');
+        if (responseMine.statusCode == 200) {
+          mineJson = json.decode(utf8.decode(responseMine.bodyBytes));
         }
-      } else {
-        debugPrint('Error en la respuesta del servidor');
-        if (mounted) setState(() => isLoading = false);
+      } catch (e) {
+        debugPrint('Error cargando mis-encuestas: $e');
+      }
+
+      debugPrint('JSON All length: ${allJson.length}');
+      debugPrint('JSON Mine length: ${mineJson.length}');
+      
+      final Set<int> myCompletedIds = mineJson.map((e) => (e['id'] as num).toInt()).toSet();
+
+      if (mounted) {
+        setState(() {
+          try {
+            surveys = allJson
+                .map((e) => Survey.fromJson(e))
+                .where((s) => !myCompletedIds.contains(s.id))
+                .toList();
+            debugPrint('Encuestas finales en lista: ${surveys.length}');
+          } catch (e) {
+            debugPrint('Error parseando encuestas: $e');
+          }
+          isLoading = false;
+        });
       }
     } catch (e) {
       debugPrint('Error en la conexión o proceso: $e');
@@ -83,6 +104,8 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.isLoggedIn) return buildPlaceholder(context, "Tu Estanque de Encuestas", widget.onGoToProfile);
+
     return Scaffold(
       backgroundColor: backgroundLight,
       appBar: AppBar(
@@ -158,7 +181,9 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
 // ✅ PANTALLA 2: MIS ENCUESTAS (COMPLETED)
 // =============================================================================
 class MisEncuestasScreen extends StatefulWidget {
-  const MisEncuestasScreen({super.key});
+  final bool isLoggedIn;
+  final VoidCallback onGoToProfile;
+  const MisEncuestasScreen({super.key, required this.isLoggedIn, required this.onGoToProfile});
 
   @override
   State<MisEncuestasScreen> createState() => _MisEncuestasScreenState();
@@ -171,7 +196,20 @@ class _MisEncuestasScreenState extends State<MisEncuestasScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    if (widget.isLoggedIn) {
+      _loadData();
+    } else {
+      isLoading = false;
+    }
+  }
+
+  @override
+  void didUpdateWidget(MisEncuestasScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isLoggedIn && !oldWidget.isLoggedIn) {
+      setState(() => isLoading = true);
+      _loadData();
+    }
   }
 
   Future<void> _loadData() async {
@@ -179,7 +217,7 @@ class _MisEncuestasScreenState extends State<MisEncuestasScreen> {
     final int userId = prefs.getInt('userId') ?? 0;
     final String? token = prefs.getString('jwt_token');
     
-    final url = Uri.parse('${ApiConfig.baseUrl}/api/surveys/mis-encuestas?userId=$userId');
+    final url = Uri.parse('${ApiConfig.surveysUrl}/mis-encuestas?userId=$userId');
 
     try {
       final response = await http.get(
@@ -204,6 +242,8 @@ class _MisEncuestasScreenState extends State<MisEncuestasScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.isLoggedIn) return buildPlaceholder(context, "Encuestas Completadas", widget.onGoToProfile);
+
     return Scaffold(
       backgroundColor: backgroundLight,
       appBar: AppBar(
@@ -285,7 +325,7 @@ class _SurveyDetailScreenState extends State<SurveyDetailScreen> {
       }
     });
 
-    final url = Uri.parse('${ApiConfig.baseUrl}/api/surveys/submit?userId=$userId');
+    final url = Uri.parse('${ApiConfig.surveysUrl}/submit?userId=$userId');
 
     try {
       final response = await http.post(
@@ -662,3 +702,4 @@ Widget _buildSurveyCard(BuildContext context, Survey survey, {required bool isCo
     ),
   );
 }
+

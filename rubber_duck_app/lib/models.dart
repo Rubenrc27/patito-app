@@ -61,6 +61,8 @@ class Question {
       // Aquí buscamos ambos por si acaso.
       type: json['questionType'] ?? json['type'] ?? 'SINGLE',
       
+      // PROTECCIÓN: Si el backend envía el objeto survey dentro de la pregunta,
+      // crearía un bucle infinito. Aquí solo nos interesan las opciones.
       options: (json['options'] as List<dynamic>?)
           ?.map((i) => Option.fromJson(i))
           .toList() ?? [],
