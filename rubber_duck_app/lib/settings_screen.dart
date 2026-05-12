@@ -47,19 +47,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: backgroundLight,
       appBar: AppBar(
-        title: const Text("System Settings"),
+        title: const Text("Ajustes del Sistema"),
       ),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          const _SectionHeader(title: "Application Preferences"),
+          const _SectionHeader(title: "Preferencias de la Aplicación"),
           Card(
             child: Column(
               children: [
                 SwitchListTile(
                   activeThumbColor: tertiaryBlue,
-                  title: const Text("Push Notifications"),
-                  subtitle: const Text("Receive alerts for new surveys and reports."),
+                  title: const Text("Notificaciones Push"),
+                  subtitle: const Text("Recibe alertas sobre nuevas encuestas y reportes."),
                   value: _notificationsEnabled,
                   onChanged: (val) => setState(() => _notificationsEnabled = val),
                   secondary: const Icon(Icons.notifications_active_outlined, color: primaryDeepNavy),
@@ -67,8 +67,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1, indent: 70, color: borderGray),
                 SwitchListTile(
                   activeThumbColor: tertiaryBlue,
-                  title: const Text("Audio Feedback"),
-                  subtitle: const Text("Enable subtle audio cues for interactions."),
+                  title: const Text("Feedback de Audio"),
+                  subtitle: const Text("Activa efectos de sonido suaves al interactuar."),
                   value: _duckSounds,
                   onChanged: (val) {
                     setState(() => _duckSounds = val);
@@ -82,26 +82,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           
           const SizedBox(height: 32),
-          const _SectionHeader(title: "Security & Data"),
+          const _SectionHeader(title: "Seguridad y Datos"),
           Card(
             child: ListTile(
               leading: const Icon(Icons.delete_forever_outlined, color: errorRed),
-              title: const Text("Factory Reset"),
-              subtitle: const Text("Delete all local data and profile settings."),
+              title: const Text("Restablecer de Fábrica"),
+              subtitle: const Text("Borra todos los datos locales y del perfil."),
               onTap: () {
                 showDialog(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text("Confirm Data Erasure"),
-                    content: const Text("This action will permanently remove all profile information and local cached data. This cannot be undone."),
+                    title: const Text("Confirmar Borrado de Datos"),
+                    content: const Text("Esta acción eliminará permanentemente toda la información del perfil y los datos guardados. No se puede deshacer."),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("CANCELAR")),
                       TextButton(
                         onPressed: () {
                           Navigator.pop(ctx);
                           _factoryReset();
                         }, 
-                        child: const Text("ERASE ALL", style: TextStyle(color: errorRed, fontWeight: FontWeight.bold))
+                        child: const Text("BORRAR TODO", style: TextStyle(color: errorRed, fontWeight: FontWeight.bold))
                       ),
                     ],
                   ),
@@ -111,19 +111,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           const SizedBox(height: 32),
-          const _SectionHeader(title: "Platform Information"),
+          const _SectionHeader(title: "Información de la Plataforma"),
           Card(
             child: Column(
               children: [
                 const ListTile(
                   leading: Icon(Icons.info_outline, color: neutralGray),
-                  title: Text("Version"),
+                  title: Text("Versión"),
                   trailing: Text("1.2.0-PRO", style: TextStyle(color: neutralGray, fontWeight: FontWeight.bold)),
                 ),
                 const Divider(height: 1, indent: 70, color: borderGray),
                 ListTile(
                   leading: const Icon(Icons.description_outlined, color: neutralGray),
-                  title: const Text("Service Agreement"),
+                  title: const Text("Acuerdo de Servicio"),
                   onTap: () {
                     showAboutDialog(
                       context: context,
@@ -135,8 +135,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: const Icon(Icons.flutter_dash, color: primaryDeepNavy),
                       ),
                       children: [
-                        const Text("Enterprise-grade Feedback Intelligence Platform."),
-                        const Text("Designed for high-performance corporate environments."),
+                        const Text("Plataforma de Inteligencia de Feedback para empresas."),
+                        const Text("Diseñada para entornos corporativos de alto rendimiento."),
                       ]
                     );
                   },

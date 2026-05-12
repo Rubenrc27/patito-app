@@ -109,7 +109,7 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
     return Scaffold(
       backgroundColor: backgroundLight,
       appBar: AppBar(
-        title: const Text("Your Survey Feed"),
+        title: const Text("Tu Estanque de Encuestas"),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
@@ -133,7 +133,7 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            "Your Survey Feed",
+                            "Tu Estanque",
                             style: TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
@@ -142,7 +142,7 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
                           ),
                           const SizedBox(height: 8),
                           const Text(
-                            "Complete your pending surveys to share your valuable feedback.",
+                            "Completa tus encuestas pendientes para compartir tu opinión.",
                             style: TextStyle(fontSize: 16, color: neutralGray),
                           ),
                           const SizedBox(height: 32),
@@ -500,7 +500,7 @@ class _SurveyResultScreenState extends State<SurveyResultScreen> {
     return Scaffold(
       backgroundColor: backgroundLight,
       appBar: AppBar(
-        title: const Text("Your Responses"), 
+        title: const Text("Tus Respuestas"), 
       ),
       body: isLoading 
         ? const Center(child: CircularProgressIndicator()) 
@@ -539,7 +539,7 @@ class _SurveyResultScreenState extends State<SurveyResultScreen> {
                     children: [
                       Text("${index + 1}. ${question.text}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: primaryDeepNavy)),
                       const SizedBox(height: 12), 
-                      const Text("Your response:", style: TextStyle(fontSize: 12, color: neutralGray)), 
+                      const Text("Tu respuesta:", style: TextStyle(fontSize: 12, color: neutralGray)), 
                       const SizedBox(height: 4),
                       Text(displayText, style: const TextStyle(fontSize: 16, color: tertiaryBlue, fontWeight: FontWeight.bold)),
                     ]
@@ -610,7 +610,7 @@ Widget _buildSurveyCard(BuildContext context, Survey survey, {required bool isCo
                           children: [
                             Icon(Icons.check_circle, size: 14, color: neutralGray),
                             SizedBox(width: 4),
-                            Text("Completed", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: neutralGray)),
+                            Text("Completada", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: neutralGray)),
                           ],
                         ),
                       )
@@ -626,7 +626,7 @@ Widget _buildSurveyCard(BuildContext context, Survey survey, {required bool isCo
                             Icon(isMandatory ? Icons.priority_high : Icons.info_outline, size: 14, color: isMandatory ? errorRed : tertiaryBlue),
                             const SizedBox(width: 4),
                             Text(
-                              isMandatory ? "Mandatory" : "Optional",
+                              isMandatory ? "Obligatoria" : "Opcional",
                               style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isMandatory ? errorRed : tertiaryBlue),
                             ),
                           ],
@@ -666,7 +666,7 @@ Widget _buildSurveyCard(BuildContext context, Survey survey, {required bool isCo
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Due: Oct 15", style: TextStyle(fontSize: 12, color: neutralGray)),
+                    const Text("Límite: 15 Oct", style: TextStyle(fontSize: 12, color: neutralGray)),
                     if (!isCompleted)
                       ElevatedButton(
                         onPressed: () {
@@ -680,14 +680,14 @@ Widget _buildSurveyCard(BuildContext context, Survey survey, {required bool isCo
                         ),
                         child: const Row(
                           children: [
-                            Text("Start Survey", style: TextStyle(fontSize: 12)),
+                            Text("Empezar", style: TextStyle(fontSize: 12)),
                             SizedBox(width: 4),
                             Icon(Icons.arrow_forward, size: 14),
                           ],
                         ),
                       )
                     else
-                      const Text("Points: 50", style: TextStyle(fontSize: 12, color: neutralGray)),
+                      const Text("Puntos: 50", style: TextStyle(fontSize: 12, color: neutralGray)),
                   ],
                 ),
               ],

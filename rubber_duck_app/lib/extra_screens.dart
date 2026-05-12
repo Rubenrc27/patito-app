@@ -13,19 +13,19 @@ class CreateSurveyScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: backgroundLight,
-      appBar: AppBar(title: const Text("Create New Survey")),
+      appBar: AppBar(title: const Text("Crear Nueva Encuesta")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Create New Survey",
+              "Crear Nueva Encuesta",
               style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: primaryDeepNavy),
             ),
             const SizedBox(height: 8),
             const Text(
-              "Design your questions, configure settings, and deploy to your team.",
+              "Diseña tus preguntas, configura los ajustes y despliega a tu equipo.",
               style: TextStyle(fontSize: 16, color: neutralGray),
             ),
             const SizedBox(height: 32),
@@ -35,19 +35,19 @@ class CreateSurveyScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Survey Details", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryDeepNavy)),
+                    const Text("Detalles de la Encuesta", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryDeepNavy)),
                     const SizedBox(height: 24),
-                    const Text("Survey Title", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const Text("Título de la Encuesta", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     const SizedBox(height: 8),
                     const TextField(
-                      decoration: InputDecoration(hintText: "e.g., Annual Culture Pulse"),
+                      decoration: InputDecoration(hintText: "ej., Clima Laboral"),
                     ),
                     const SizedBox(height: 24),
-                    const Text("Description", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const Text("Descripción", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     const SizedBox(height: 8),
                     const TextField(
                       maxLines: 3,
-                      decoration: InputDecoration(hintText: "Brief context for the respondents..."),
+                      decoration: InputDecoration(hintText: "Breve contexto para los encuestados..."),
                     ),
                     const SizedBox(height: 24),
                     Row(
@@ -57,8 +57,8 @@ class CreateSurveyScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Mandatory", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                              Text("Require completion by all invitees.", style: TextStyle(fontSize: 12, color: neutralGray)),
+                              Text("Obligatoria", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              Text("Requiere completarse por todos los invitados.", style: TextStyle(fontSize: 12, color: neutralGray)),
                             ],
                           ),
                         ),
@@ -74,7 +74,7 @@ class CreateSurveyScreen extends StatelessWidget {
               child: ElevatedButton.icon(
                 onPressed: () {},
                 icon: const Icon(Icons.rocket_launch),
-                label: const Text("Publish Survey"),
+                label: const Text("Publicar Encuesta"),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 56),
                 ),
@@ -98,19 +98,19 @@ class AnalyticsScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: backgroundLight,
-      appBar: AppBar(title: const Text("Survey Analytics")),
+      appBar: AppBar(title: const Text("Análisis de Encuestas")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Survey Analytics",
+              "Análisis de Encuestas",
               style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: primaryDeepNavy),
             ),
             const SizedBox(height: 8),
             const Text(
-              "Track engagement and visualize team feedback in real-time.",
+              "Sigue el compromiso y visualiza el feedback del equipo en tiempo real.",
               style: TextStyle(fontSize: 16, color: neutralGray),
             ),
             const SizedBox(height: 32),
@@ -122,10 +122,10 @@ class AnalyticsScreen extends StatelessWidget {
               crossAxisSpacing: 24,
               childAspectRatio: 1.5,
               children: [
-                _buildStatCard("Total Responses", "1,284", Icons.people_outline, tertiaryBlue),
-                _buildStatCard("Completion Rate", "84%", Icons.donut_large, Colors.green),
-                _buildStatCard("Avg. Time", "12m", Icons.timer_outlined, Colors.orange),
-                _buildStatCard("NPS Score", "72", Icons.trending_up, secondaryYellow),
+                _buildStatCard("Total Respuestas", "1,284", Icons.people_outline, tertiaryBlue),
+                _buildStatCard("Tasa de Finalización", "84%", Icons.donut_large, Colors.green),
+                _buildStatCard("Tiempo Medio", "12m", Icons.timer_outlined, Colors.orange),
+                _buildStatCard("Puntuación NPS", "72", Icons.trending_up, secondaryYellow),
               ],
             ),
           ],

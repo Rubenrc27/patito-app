@@ -131,10 +131,10 @@ class _MainScreenState extends State<MainScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildBottomNavItem(Icons.ballot, "Feed", 0),
-                      _buildBottomNavItem(Icons.add_circle, "Create", 1),
-                      _buildBottomNavItem(Icons.analytics, "Analytics", 2),
-                      _buildBottomNavItem(Icons.person, "Profile", 3),
+                      _buildBottomNavItem(Icons.ballot, "Estanque", 0),
+                      _buildBottomNavItem(Icons.add_circle, "Crear", 1),
+                      _buildBottomNavItem(Icons.analytics, "Análisis", 2),
+                      _buildBottomNavItem(Icons.person, "Perfil", 3),
                     ],
                   ),
                 ),

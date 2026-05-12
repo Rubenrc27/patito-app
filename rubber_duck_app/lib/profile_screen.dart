@@ -56,9 +56,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadProfileData() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _nameController.text = prefs.getString('profile_name') ?? "Consultant Name";
+      _nameController.text = prefs.getString('profile_name') ?? "Nombre del Consultor";
       _ageController.text = prefs.getString('profile_age') ?? "";
-      _bioController.text = prefs.getString('profile_bio') ?? "Professional Consultant specializing in data-driven insights.";
+      _bioController.text = prefs.getString('profile_bio') ?? "Consultor profesional especializado en análisis de datos.";
       _currentAvatar = prefs.getString('profile_avatar') ?? "🦆";
       List<String> completed = prefs.getStringList('completed_surveys') ?? [];
       _completedCount = completed.length;
@@ -161,7 +161,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     setState(() => _isEditing = false);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Profile updated successfully."), backgroundColor: Colors.green));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Perfil actualizado correctamente."), backgroundColor: Colors.green));
     }
   }
 
@@ -172,7 +172,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: backgroundLight,
       appBar: AppBar(
-        title: const Text("User Profile"),
+        title: const Text("Perfil de Usuario"),
         actions: [
           IconButton(
             icon: Icon(_isEditing ? Icons.check : Icons.edit),
@@ -235,9 +235,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _buildStat("Surveys", _completedCount.toString()),
-                        _buildStat("Points", "${_completedCount * 10}"),
-                        _buildStat("Age", _ageController.text.isEmpty ? "-" : _ageController.text),
+                        _buildStat("Encuestas", _completedCount.toString()),
+                        _buildStat("Puntos", "${_completedCount * 10}"),
+                        _buildStat("Edad", _ageController.text.isEmpty ? "-" : _ageController.text),
                       ],
                     ),
                   ],
@@ -251,13 +251,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Professional Details", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryDeepNavy)),
+                    const Text("Detalles Profesionales", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryDeepNavy)),
                     const SizedBox(height: 24),
-                    _buildTextField("Full Name", _nameController, Icons.person_outline),
+                    _buildTextField("Nombre Completo", _nameController, Icons.person_outline),
                     const SizedBox(height: 16),
-                    _buildTextField("Age", _ageController, Icons.cake_outlined, isNumber: true),
+                    _buildTextField("Edad", _ageController, Icons.cake_outlined, isNumber: true),
                     const SizedBox(height: 16),
-                    _buildTextField("Biography", _bioController, Icons.description_outlined, maxLines: 3),
+                    _buildTextField("Biografía", _bioController, Icons.description_outlined, maxLines: 3),
                   ],
                 ),
               ),
