@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rubber Duck Surveys - Professional Showcase</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      :root {
+        --navy: #0F172A;
+        --yellow: #FACC15;
+        --blue: #2563EB;
+        --bg: #F8FAFC;
+        --gray: #64748B;
+        --border: #E2E8F0;
+      }
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+        font-family: 'Inter', sans-serif;
+      }
+
+      /* Background Decoratives */
+      .bg-sphere {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.15;
+        z-index: -1;
+      }
+
+      /* Mobile Mockup */
+      .phone-wrapper {
+        perspective: 2000px;
+        z-index: 10;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 100%;
+      }
+      .phone-frame {
+        width: 440px;
+        height: 900px;
+        background: #111;
+        border-radius: 60px;
+        padding: 12px;
+        box-shadow: 0 50px 100px rgba(0,0,0,0.3);
+        border: 4px solid #333;
+        position: relative;
+        transform-style: preserve-3d;
+      }
+      .phone-screen {
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        border-radius: 48px;
+        overflow: hidden;
+        position: relative;
+      }
+      .phone-bezel {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 160px;
+        height: 36px;
+        background: #111;
+        border-bottom-left-radius: 20px;
+        border-bottom-right-radius: 20px;
+        z-index: 100;
+      }
+
+      /* Screen Contents */
+      .screen-view {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: none;
+        flex-direction: column;
+        box-sizing: border-box;
+      }
+      .screen-active { display: flex; }
+
+      /* Splash Screen */
+      .view-splash { background: var(--navy); justify-content: center; align-items: center; color: white; }
+      .splash-logo { width: 120px; height: 120px; background: var(--yellow); border-radius: 24px; display: flex; justify-content: center; align-items: center; }
+      .splash-logo svg { width: 80px; fill: var(--navy); }
+
+      /* Feed View */
+      .view-feed { background: var(--bg); padding: 80px 24px 40px; }
+      .feed-title { font-size: 28px; font-weight: 800; color: var(--navy); margin-bottom: 24px; }
+      .scroll-container { display: flex; flex-direction: column; gap: 16px; flex: 1; }
+      .mock-card {
+        background: white;
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        border: 1px solid var(--border);
+      }
+      .mock-card .tag { font-size: 10px; font-weight: 700; color: var(--blue); margin-bottom: 8px; }
+      .mock-card .title { font-size: 18px; font-weight: 700; color: var(--navy); }
+
+      /* Stats View */
+      .view-stats { background: var(--navy); color: white; padding: 80px 24px; }
+      .stats-header { font-size: 24px; font-weight: 800; margin-bottom: 40px; text-align: center; }
+      .stats-circle {
+        width: 200px;
+        height: 200px;
+        border: 12px solid var(--blue);
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        margin: 0 auto;
+      }
+      .stats-val { font-size: 48px; font-weight: 800; color: var(--yellow); }
+
+      /* Interaction Elements */
+      .touch-indicator {
+        position: absolute;
+        width: 60px;
+        height: 60px;
+        background: rgba(37, 99, 235, 0.4);
+        border: 2px solid white;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 200;
+        opacity: 0;
+      }
+
+      /* External Text */
+      .floating-label {
+        position: absolute;
+        font-size: 80px;
+        font-weight: 900;
+        color: var(--navy);
+        opacity: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-width="1920"
+      data-height="1080"
+      data-start="0"
+      data-duration="30"
+      data-layout-allow-overflow
+      style="width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center;"
+    >
+      <!-- Background Decoratives -->
+      <div class="bg-sphere" style="width: 800px; height: 800px; background: var(--blue); top: -200px; right: -200px;"></div>
+      <div class="bg-sphere" style="width: 600px; height: 600px; background: var(--yellow); bottom: -100px; left: -100px;"></div>
+
+      <div id="label-1" class="floating-label" style="top: 200px; left: 150px;">Potente.</div>
+      <div id="label-2" class="floating-label" style="top: 320px; left: 150px;">Sencillo.</div>
+      <div id="label-3" class="floating-label" style="top: 440px; left: 150px;">Eficaz.</div>
+
+      <div class="phone-wrapper">
+        <div class="phone-frame">
+          <div class="phone-bezel"></div>
+          <div class="touch-indicator"></div>
+          <div class="phone-screen">
+            
+            <!-- Screen 1: Splash -->
+            <div id="scr-splash" class="screen-view view-splash screen-active" data-layout-allow-overflow>
+              <div class="splash-logo">
+                <svg viewBox="0 0 24 24"><path d="M12,2C12,2 12,2 12,2C10.9,2 10,2.9 10,4C10,4.3 10.1,4.6 10.2,4.8L8.3,7.6C7.3,7.1 6.2,7 5,7.3C3.2,7.7 2,9.3 2,11.2C2,13.6 3.8,15.6 6.2,15.9C7.3,16 8.4,15.8 9.3,15.2L11.2,18.1C11.1,18.3 11,18.6 11,19C11,20.1 11.9,21 13,21C14.1,21 15,20.1 15,19C15,18.7 14.9,18.4 14.8,18.2L16.7,15.4C17.7,15.9 18.8,16 20,15.7C21.8,15.3 23,13.7 23,11.8C23,9.4 21.2,7.4 18.8,7.1C17.7,7 16.6,7.2 15.7,7.8L13.8,4.9C13.9,4.7 14,4.4 14,4C14,2.9 13.1,2 12,2M12,4C12.6,4 13,4.4 13,5C13,5.6 12.6,6 12,6C11.4,6 11,5.6 11,5C11,4.4 11.4,4 12,4M6,9C6.6,9 7,9.4 7,10C7,10.6 6.6,11 6,11C5.4,11 5,10.6 5,10C5,9.4 5.4,9 6,9M18,9C18.6,9 19,9.4 19,10C19,10.6 18.6,11 18,11C17.4,11 17,10.6 17,10C17,9.4 17.4,9 18,9M13,11C13.6,11 14,11.4 14,12C14,12.6 13.6,13 13,13C12.4,13 12,12.6 12,12C12,11.4 12.4,11 13,11M13,17C13.6,17 14,17.4 14,18C14,18.6 13.6,19 13,19C12.4,19 12,18.6 12,18C12,17.4 12.4,17 13,17Z"/></svg>
+              </div>
+              <div style="font-weight: 800; font-size: 24px; margin-top: 24px; color: white;">Rubber Duck</div>
+            </div>
+
+            <!-- Screen 2: Feed -->
+            <div id="scr-feed" class="screen-view view-feed" data-layout-allow-overflow>
+              <div class="feed-title">Tu Estanque</div>
+              <div class="scroll-container">
+                <div class="mock-card">
+                  <div class="tag">OBLIGATORIA</div>
+                  <div class="title">Feedback del Proyecto</div>
+                </div>
+                <div class="mock-card">
+                  <div class="tag">OPCIONAL</div>
+                  <div class="title">Encuesta de Clima</div>
+                </div>
+                <div class="mock-card">
+                  <div class="tag">OBLIGATORIA</div>
+                  <div class="title">Seguridad TI</div>
+                </div>
+                <div class="mock-card">
+                  <div class="tag">OPCIONAL</div>
+                  <div class="title">Nuevos Features</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Screen 3: Stats -->
+            <div id="scr-stats" class="screen-view view-stats" data-layout-allow-overflow>
+              <div class="stats-header">Resultados en tiempo real</div>
+              <div class="stats-circle">
+                <div class="stats-val" id="stat-count">0</div>
+                <div style="font-size: 12px; opacity: 0.6;">PARTICIPANTES</div>
+              </div>
+              <div style="margin-top: 40px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="height: 12px; width: 80%; background: var(--blue); border-radius: 6px;"></div>
+                <div style="height: 12px; width: 60%; background: var(--yellow); border-radius: 6px;"></div>
+                <div style="height: 12px; width: 90%; background: var(--blue); border-radius: 6px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // Initial state
+      tl.set(".phone-frame", { rotationY: 45, rotationX: 10, scale: 0.8, opacity: 0 });
+      tl.set(".touch-indicator", { scale: 0 });
+
+      // --- Scene 1: Reveal (0-6s) ---
+      tl.to(".phone-frame", { rotationY: 0, rotationX: 0, scale: 1, opacity: 1, duration: 2, ease: "power3.out" }, 0.5);
+      tl.from(".splash-logo", { scale: 0, rotation: -45, duration: 1, ease: "back.out(1.7)" }, 1.2);
+      
+      tl.to("#label-1", { opacity: 1, x: 50, duration: 1 }, 1.5);
+      tl.to("#label-2", { opacity: 1, x: 50, duration: 1 }, 1.8);
+      tl.to("#label-3", { opacity: 1, x: 50, duration: 1 }, 2.1);
+
+      // --- Scene 2: Feed Scroll (6-13s) ---
+      tl.set("#scr-splash", { display: "none" }, 6);
+      tl.set("#scr-feed", { display: "flex" }, 6);
+      
+      // Simulate Scroll
+      tl.set(".touch-indicator", { opacity: 1, scale: 1, x: 220, y: 700 }, 6.5);
+      tl.to(".touch-indicator", { y: 300, duration: 1.5, ease: "power2.inOut" }, 7);
+      tl.to(".scroll-container", { y: -200, duration: 1.5, ease: "power2.inOut" }, 7);
+      tl.to(".touch-indicator", { opacity: 0, scale: 0, duration: 0.3 }, 8.5);
+
+      // Tap Interaction
+      tl.to(".touch-indicator", { opacity: 1, scale: 1, x: 220, y: 400, duration: 0 }, 9.5);
+      tl.to(".touch-indicator", { scale: 0.8, duration: 0.2, yoyo: true, repeat: 1 }, 9.7);
+      tl.to(".mock-card:nth-child(2)", { backgroundColor: "#f0f9ff", duration: 0.2 }, 9.7);
+
+      // --- Scene 3: Stats (13-22s) ---
+      tl.to("#scr-feed", { x: -440, duration: 0.6, ease: "power3.inOut" }, 13);
+      tl.set("#scr-stats", { display: "flex", x: 440 }, 13);
+      tl.to("#scr-stats", { x: 0, duration: 0.6, ease: "power3.inOut" }, 13);
+      
+      tl.to("#stat-count", { 
+        innerText: 1240, 
+        duration: 3, 
+        ease: "power2.out",
+        snap: { innerText: 1 },
+        onUpdate: function() {
+          this.targets()[0].innerText = Math.ceil(this.targets()[0].innerText).toLocaleString();
+        }
+      }, 14);
+
+      // Perspective shift during stats
+      tl.to(".phone-frame", { rotationY: -15, rotationX: 5, duration: 8, ease: "sine.inOut" }, 13);
+
+      // --- Scene 4: CTA (22-30s) ---
+      tl.to(".phone-frame", { x: 400, rotationY: -20, scale: 0.9, duration: 1.5, ease: "power3.inOut" }, 22);
+      tl.to(".floating-label", { opacity: 0, x: -100, duration: 1, stagger: 0.1 }, 22);
+      
+      // Final Reveal Text (off-screen)
+      tl.to("#root", { backgroundColor: "#0F172A", duration: 1.5 }, 22);
+      
+      const ctaHtml = `
+        <div id="cta-block" style="position:absolute; left: 200px; top: 400px; color: white; opacity: 0;">
+          <h1 style="font-size: 80px; margin: 0;">Quack Surveys.</h1>
+          <p style="font-size: 32px; color: #FACC15;">Tus encuestas, simplificadas.</p>
+          <div style="display: flex; gap: 20px; margin-top: 40px;">
+            <div style="width: 200px; height: 60px; background: #fff; border-radius: 12px; opacity: 0.8;"></div>
+            <div style="width: 200px; height: 60px; background: #fff; border-radius: 12px; opacity: 0.8;"></div>
+          </div>
+        </div>
+      `;
+      document.querySelector('#root').insertAdjacentHTML('beforeend', ctaHtml);
+
+      tl.to("#cta-block", { opacity: 1, x: 50, duration: 1 }, 23.5);
+
+      // Final Fade Out
+      tl.to("#root", { opacity: 0, duration: 1 }, 29);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
