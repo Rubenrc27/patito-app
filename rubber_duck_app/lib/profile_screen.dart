@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'colors.dart';
@@ -34,7 +33,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _currentAvatar = "🦆"; 
 
   final List<String> _emojiAvatars = ["🦆", "🦅", "🦉", "🦩", "🐧", "🐤", "🐼", "🦊", "🦁", "🐸", "🐙", "🦄"];
-  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {

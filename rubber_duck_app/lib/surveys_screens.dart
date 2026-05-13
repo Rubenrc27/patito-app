@@ -6,6 +6,7 @@ import 'colors.dart';
 import 'models.dart';
 import 'api_config.dart';
 import 'shared_widgets.dart';
+import 'extra_screens.dart';
 
 // =============================================================================
 // 🌊 PANTALLA 1: ESTANQUE (FEED)
@@ -22,10 +23,12 @@ class EstanqueScreen extends StatefulWidget {
 class _EstanqueScreenState extends State<EstanqueScreen> {
   List<Survey> surveys = [];
   bool isLoading = true;
+  bool isAdmin = false;
 
   @override
   void initState() {
     super.initState();
+    _checkRole();
     if (widget.isLoggedIn) {
       _loadData();
     } else {
@@ -33,10 +36,20 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
     }
   }
 
+  Future<void> _checkRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        isAdmin = prefs.getString('role') == 'ADMIN';
+      });
+    }
+  }
+
   @override
   void didUpdateWidget(EstanqueScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isLoggedIn && !oldWidget.isLoggedIn) {
+      _checkRole();
       setState(() => isLoading = true);
       _loadData();
     }
@@ -57,10 +70,7 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
 
       debugPrint('Cargando encuestas para userId: $userId');
       
-      // Cargamos por separado para que si falla una, la otra funcione
       final responseAll = await http.get(urlAll, headers: headers);
-      debugPrint('Status All: ${responseAll.statusCode}');
-
       List<dynamic> allJson = [];
       if (responseAll.statusCode == 200) {
         allJson = json.decode(utf8.decode(responseAll.bodyBytes));
@@ -69,16 +79,12 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
       List<dynamic> mineJson = [];
       try {
         final responseMine = await http.get(urlMine, headers: headers);
-        debugPrint('Status Mine: ${responseMine.statusCode}');
         if (responseMine.statusCode == 200) {
           mineJson = json.decode(utf8.decode(responseMine.bodyBytes));
         }
       } catch (e) {
         debugPrint('Error cargando mis-encuestas: $e');
       }
-
-      debugPrint('JSON All length: ${allJson.length}');
-      debugPrint('JSON Mine length: ${mineJson.length}');
       
       final Set<int> myCompletedIds = mineJson.map((e) => (e['id'] as num).toInt()).toSet();
 
@@ -87,9 +93,8 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
           try {
             surveys = allJson
                 .map((e) => Survey.fromJson(e))
-                .where((s) => !myCompletedIds.contains(s.id))
+                .where((s) => isAdmin || !myCompletedIds.contains(s.id))
                 .toList();
-            debugPrint('Encuestas finales en lista: ${surveys.length}');
           } catch (e) {
             debugPrint('Error parseando encuestas: $e');
           }
@@ -97,9 +102,61 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error en la conexión o proceso: $e');
       if (mounted) setState(() => isLoading = false);
     }
+  }
+
+  Future<void> _deleteSurvey(int surveyId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? token = prefs.getString('jwt_token');
+
+    try {
+      final response = await http.delete(
+        Uri.parse('${ApiConfig.surveysUrl}/$surveyId'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Encuesta eliminada correctamente")));
+        _loadData();
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error al eliminar: ${response.statusCode}")));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error de conexión")));
+    }
+  }
+
+  void _showDeleteDialog(Survey survey) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: errorRed),
+            SizedBox(width: 8),
+            Text("¿Eliminar encuesta?"),
+          ],
+        ),
+        content: Text("Esta acción borrará '${survey.title}' y todas sus respuestas de forma permanente. ¡Quack!"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("CANCELAR", style: TextStyle(color: neutralGray))),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _deleteSurvey(survey.id);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: errorRed, foregroundColor: Colors.white),
+            child: const Text("ELIMINAR"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -141,9 +198,11 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
-                            "Completa tus encuestas pendientes para compartir tu opinión.",
-                            style: TextStyle(fontSize: 16, color: neutralGray),
+                          Text(
+                            isAdmin 
+                              ? "Panel de administración. Gestiona las encuestas del equipo."
+                              : "Completa tus encuestas pendientes para compartir tu opinión.",
+                            style: const TextStyle(fontSize: 16, color: neutralGray),
                           ),
                           const SizedBox(height: 32),
                         ],
@@ -161,13 +220,15 @@ class _EstanqueScreenState extends State<EstanqueScreen> {
                               crossAxisCount: MediaQuery.of(context).size.width > 900 ? 3 : (MediaQuery.of(context).size.width > 600 ? 2 : 1),
                               mainAxisSpacing: 24,
                               crossAxisSpacing: 24,
-                              mainAxisExtent: 260,
+                              mainAxisExtent: isAdmin ? 300 : 260,
                             ),
                             delegate: SliverChildBuilderDelegate(
                               (context, index) => _buildSurveyCard(
                                 context, 
                                 surveys[index], 
                                 isCompleted: false,
+                                isAdmin: isAdmin,
+                                onDelete: () => _showDeleteDialog(surveys[index]),
                                 onRefresh: () {
                                   setState(() => isLoading = true);
                                   _loadData();
@@ -659,7 +720,12 @@ Widget _buildEmptyState(String msg, IconData icon) {
   ]));
 }
 
-Widget _buildSurveyCard(BuildContext context, Survey survey, {required bool isCompleted, VoidCallback? onRefresh}) {
+Widget _buildSurveyCard(BuildContext context, Survey survey, {
+  required bool isCompleted, 
+  bool isAdmin = false,
+  VoidCallback? onDelete,
+  VoidCallback? onRefresh
+}) {
   final isMandatory = survey.title.toLowerCase().contains("obligatoria") || survey.id % 3 == 0;
   
   return Card(
@@ -728,13 +794,40 @@ Widget _buildSurveyCard(BuildContext context, Survey survey, {required bool isCo
                           ],
                         ),
                       ),
-                    Row(
-                      children: [
-                        const Icon(Icons.schedule, size: 14, color: neutralGray),
-                        const SizedBox(width: 4),
-                        Text(isCompleted ? "1 Oct" : "15 min", style: const TextStyle(fontSize: 10, color: neutralGray)),
-                      ],
-                    ),
+                    if (isAdmin)
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 18, color: tertiaryBlue),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => CreateSurveyScreen(
+                                isLoggedIn: true, 
+                                onGoToProfile: () {}, 
+                                surveyToEdit: survey
+                              ))).then((val) {
+                                if (val == true && onRefresh != null) onRefresh();
+                              });
+                            },
+                          ),
+                          const SizedBox(width: 12),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 18, color: errorRed),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: onDelete,
+                          ),
+                        ],
+                      )
+                    else
+                      Row(
+                        children: [
+                          const Icon(Icons.schedule, size: 14, color: neutralGray),
+                          const SizedBox(width: 4),
+                          Text(isCompleted ? "1 Oct" : "15 min", style: const TextStyle(fontSize: 10, color: neutralGray)),
+                        ],
+                      ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -798,4 +891,3 @@ Widget _buildSurveyCard(BuildContext context, Survey survey, {required bool isCo
     ),
   );
 }
-
